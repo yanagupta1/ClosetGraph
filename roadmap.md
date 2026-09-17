@@ -17,13 +17,13 @@ individual garments
         |
 layering combination
         |
-complete outfit
+  complete outfit
         |
 effective formality
         |
 occasion suitability
         |
-ranking
+     ranking
 ```
 
 An item's appropriateness can change based on the full outfit. A tank can become business casual under a blazer with tailored trousers. A sheer top may need an opaque base layer and structured outer layer. Dark clean jeans may work for some business-casual contexts but should rank below tailored trousers for a conservative client meeting.
