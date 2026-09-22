@@ -21,6 +21,12 @@ A blazer does not automatically make every outfit professional. A tank can becom
 
 ## Current Status
 
-This repo is in the planning stage. The current focus is defining the roadmap, architecture boundaries, and evaluation strategy before implementation begins.
+ClosetGraph is being developed incrementally, starting with a minimal walking skeleton before introducing retrieval, memory, vision, and additional agentic workflows.
+
+The Stage 1 walking skeleton is implemented as a notebook demo. It loads a small wardrobe, generates owned-item outfit candidates, ranks them with a Groq-backed stylist component, and includes a pytest suite covering the core graph and stylist behavior.
+
+The initial handwritten design notes capture the early architecture, open questions, and decisions that shaped the roadmap:
+
+[View initial design notes](docs/handwritten_notes1.pdf)
 
 See [roadmap.md](roadmap.md) for the staged development plan.

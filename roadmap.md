@@ -54,26 +54,27 @@ Some constraints can be deterministic, such as ownership checks and impossible c
 
 ## Stage 0: Design
 
-- [ ] Define the first notebook workflow.
-- [ ] Sketch LangGraph state and routing without coding.
-- [ ] Choose minimal V1 wardrobe fields.
-- [ ] List later rich attributes: formality range, layering role, opacity, coverage, neckline, fit, silhouette, material, texture, color, pattern, and compatibility.
-- [ ] Decide the first outfit request format.
-- [ ] Draft 5 to 10 tricky styling examples for evaluation.
-- [ ] Decide what is deterministic in V1 versus judged by the stylist model.
+- [x] Define the first notebook workflow.
+- [x] Sketch LangGraph state and routing without coding.
+- [x] Choose minimal V1 wardrobe fields.
+- [x] List later rich attributes: formality range, layering role, opacity, coverage, neckline, fit, silhouette, material, texture, color, pattern, and compatibility.
+- [x] Decide the first outfit request format.
+- [x] Draft initial tricky styling examples for manual evaluation.
+- [x] Decide what is deterministic in V1 versus judged by the stylist model.
 
 **Done when:** the core graph, state objects, and styling responsibilities can be explained clearly before implementation begins.
 
 ## Stage 1: Walking Skeleton
 
-- [ ] Text-only wardrobe entry.
-- [ ] Simple local persistence for wardrobe data.
-- [ ] LangGraph workflow with explicit state.
-- [ ] Supervisor connected to Stylist.
-- [ ] Candidate outfit generation from owned items only.
-- [ ] Deterministic ownership validation.
-- [ ] Ranked outfit output with reasoning over complete outfits.
-- [ ] Manual demo with a small real wardrobe and 3 occasions.
+- [x] Text-only wardrobe entry.
+- [x] Simple local persistence for wardrobe data.
+- [x] LangGraph workflow with explicit state.
+- [x] Supervisor-style graph controller connected to Stylist.
+- [x] Candidate outfit generation from owned items only.
+- [x] Deterministic ownership validation.
+- [x] Ranked outfit output with reasoning over complete outfits.
+- [x] Manual demo with a small real wardrobe and 3 occasions.
+- [x] Unit and integration tests with coverage threshold.
 
 **Done when:** the notebook produces sensible, non-generic ranked outfits using only owned wardrobe items.
 
@@ -152,15 +153,15 @@ Some constraints can be deterministic, such as ownership checks and impossible c
 
 ## Open Decisions Before Stage 1
 
-- [ ] Notebook structure.
-- [ ] Minimal wardrobe schema.
-- [ ] Sample wardrobe items and edge cases.
-- [ ] Outfit request shape.
-- [ ] LangGraph state shape.
-- [ ] Candidate generation strategy.
-- [ ] Deterministic validation checks.
-- [ ] Stylist output format.
-- [ ] First evaluation examples.
+- [x] Notebook structure.
+- [x] Minimal wardrobe schema.
+- [x] Sample wardrobe items and edge cases.
+- [x] Outfit request shape.
+- [x] LangGraph state shape.
+- [x] Candidate generation strategy.
+- [x] Deterministic validation checks.
+- [x] Stylist output format.
+- [x] First manual evaluation examples.
 
 ## Portfolio Story
 
