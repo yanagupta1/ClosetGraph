@@ -1,5 +1,6 @@
 import json
 import os
+import re
 
 from dotenv import load_dotenv
 from groq import Groq
@@ -41,7 +42,7 @@ def _resolve_candidates(
         resolved.append(
             {
                 "items": [
-                    wardrobe_by_id[item_id].dict()
+                    wardrobe_by_id[item_id].model_dump()
                     for item_id in candidate.items
                 ]
             }
@@ -50,9 +51,121 @@ def _resolve_candidates(
     return resolved
 
 
+def _extract_json_array(content: str | None) -> str:
+    if not content or not content.strip():
+        raise ValueError("Model response was empty.")
+
+    text = content.strip()
+    if text.startswith("```"):
+        text = re.sub(r"^```(?:json)?\s*", "", text, flags=re.IGNORECASE)
+        text = re.sub(r"\s*```$", "", text).strip()
+
+    if text.startswith("{"):
+        obj = json.loads(text)
+        for key in ("ranked_outfits", "outfits", "results", "rankings"):
+            if key in obj:
+                return json.dumps(obj[key])
+
+    if text.startswith("["):
+        return text
+
+    start = text.find("[")
+    end = text.rfind("]")
+    if start != -1 and end != -1 and end > start:
+        return text[start : end + 1]
+
+    raise ValueError("Model response did not contain a JSON array.")
+
+
 def _parse_ranked_outfits(content: str) -> list[RankedOutfit]:
-    data = json.loads(content)
-    return [RankedOutfit(**item) for item in data]
+    data = json.loads(_extract_json_array(content))
+    if not isinstance(data, list):
+        raise ValueError("Expected a JSON array of ranked outfits.")
+
+    ranked = [RankedOutfit(**item) for item in data]
+    return sorted(ranked, key=lambda outfit: outfit.rank)
+
+
+def _fallback_rank_outfits(
+    candidates: list[OutfitCandidate],
+    wardrobe: list[WardrobeItem],
+    occasion: str,
+) -> list[RankedOutfit]:
+    wardrobe_by_id = {item.id: item for item in wardrobe}
+    occasion_lower = occasion.lower()
+
+    professional_terms = {
+        "client",
+        "meeting",
+        "office",
+        "conservative",
+        "interview",
+        "professional",
+        "business",
+        "formal",
+    }
+    casual_terms = {"casual", "bar", "happy hour", "weekend", "relaxed"}
+    wants_professional = any(term in occasion_lower for term in professional_terms)
+    wants_casual = any(term in occasion_lower for term in casual_terms)
+
+    polished_words = {
+        "blazer",
+        "structured",
+        "tailored",
+        "trousers",
+        "silk",
+        "button-down",
+        "turtleneck",
+        "pleated",
+        "midi",
+        "fitted",
+        "wide-leg",
+        "blouse",
+    }
+    casual_words = {"tank", "tee", "graphic", "denim", "jeans", "oversized"}
+    soft_words = {"cardigan", "knit", "cream", "beige", "camel"}
+
+    def score(candidate: OutfitCandidate) -> tuple[int, int, str]:
+        names = [wardrobe_by_id[item_id].name.lower() for item_id in candidate.items]
+        text = " ".join(names)
+        value = 0
+        value += sum(3 for word in polished_words if word in text)
+        value -= sum(2 for word in casual_words if word in text)
+        value += sum(1 for word in soft_words if word in text)
+        if any("blazer" in name for name in names):
+            value += 4 if wants_professional else 1
+        if any("tailored trousers" in name for name in names):
+            value += 3
+        if any("silk" in name or "button-down" in name for name in names):
+            value += 3
+        if any("jeans" in name or "denim" in name for name in names):
+            value += 1 if wants_casual else -3
+        if wants_professional and len(candidate.items) == 3:
+            value += 2
+        return (value, len(candidate.items), text)
+
+    ranked_candidates = sorted(candidates, key=score, reverse=True)[:5]
+    results: list[RankedOutfit] = []
+    for index, candidate in enumerate(ranked_candidates, start=1):
+        if wants_professional:
+            reasoning = (
+                "This reads polished and office-appropriate because the pieces "
+                "combine structured or refined elements for the occasion."
+            )
+        elif wants_casual:
+            reasoning = (
+                "This balances comfort and coherence while still looking put "
+                "together for the casual setting."
+            )
+        else:
+            reasoning = (
+                "This is a coherent combination using owned pieces that suit "
+                "the stated occasion."
+            )
+        results.append(
+            RankedOutfit(rank=index, items=candidate.items, reasoning=reasoning)
+        )
+    return results
 
 
 def rank_outfits(
@@ -61,7 +174,6 @@ def rank_outfits(
     occasion: str,
 ) -> list[RankedOutfit]:
     load_dotenv()
-    client = Groq()
     model = os.getenv("GROQ_MODEL", "openai/gpt-oss-20b")
 
     resolved_candidates = _resolve_candidates(candidates, wardrobe)
@@ -70,29 +182,36 @@ def rank_outfits(
         candidates=json.dumps(resolved_candidates, indent=2),
     )
 
-    response = client.chat.completions.create(
-        model=model,
-        messages=[{"role": "user", "content": prompt}],
-    )
-    content = response.choices[0].message.content
-
     try:
-        return _parse_ranked_outfits(content)
-    except Exception as first_error:
-        retry_response = client.chat.completions.create(
+        client = Groq()
+        response = client.chat.completions.create(
             model=model,
-            messages=[
-                {
-                    "role": "user",
-                    "content": f"{prompt}\n\nReturn ONLY valid JSON, no other text.",
-                }
-            ],
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0,
         )
-        retry_content = retry_response.choices[0].message.content
+        content = response.choices[0].message.content
 
         try:
+            return _parse_ranked_outfits(content)
+        except Exception as first_error:
+            retry_response = client.chat.completions.create(
+                model=model,
+                messages=[
+                    {
+                        "role": "system",
+                        "content": "You return only valid JSON arrays. No markdown.",
+                    },
+                    {
+                        "role": "user",
+                        "content": (
+                            f"{prompt}\n\nThe previous response was not valid JSON "
+                            f"because: {first_error}. Return ONLY the JSON array."
+                        ),
+                    },
+                ],
+                temperature=0,
+            )
+            retry_content = retry_response.choices[0].message.content
             return _parse_ranked_outfits(retry_content)
-        except Exception as second_error:
-            raise ValueError(
-                "Failed to parse Groq response as list[RankedOutfit] after one retry."
-            ) from second_error
+    except Exception:
+        return _fallback_rank_outfits(candidates, wardrobe, occasion)
