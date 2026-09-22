@@ -1,4 +1,5 @@
 import json
+import os
 
 from dotenv import load_dotenv
 from groq import Groq
@@ -61,6 +62,7 @@ def rank_outfits(
 ) -> list[RankedOutfit]:
     load_dotenv()
     client = Groq()
+    model = os.getenv("GROQ_MODEL", "openai/gpt-oss-20b")
 
     resolved_candidates = _resolve_candidates(candidates, wardrobe)
     prompt = STYLIST_PROMPT_TEMPLATE.format(
@@ -69,7 +71,7 @@ def rank_outfits(
     )
 
     response = client.chat.completions.create(
-        model="llama-3.3-70b-versatile",
+        model=model,
         messages=[{"role": "user", "content": prompt}],
     )
     content = response.choices[0].message.content
@@ -78,7 +80,7 @@ def rank_outfits(
         return _parse_ranked_outfits(content)
     except Exception as first_error:
         retry_response = client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
+            model=model,
             messages=[
                 {
                     "role": "user",
