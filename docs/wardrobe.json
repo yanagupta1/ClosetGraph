@@ -1,0 +1,16 @@
+[
+  {"id": "t1", "name": "black scoop-neck tank top", "category": "top"},
+  {"id": "t2", "name": "white silk button-down blouse", "category": "top"},
+  {"id": "t3", "name": "grey ribbed turtleneck", "category": "top"},
+  {"id": "t4", "name": "navy fitted long-sleeve top", "category": "top"},
+  {"id": "t5", "name": "cream sleeveless blouse", "category": "top"},
+  {"id": "t6", "name": "olive button-down shirt", "category": "top"},
+  {"id": "b1", "name": "black tailored trousers", "category": "bottom"},
+  {"id": "b2", "name": "dark wash straight-leg jeans", "category": "bottom"},
+  {"id": "b3", "name": "grey pleated midi skirt", "category": "bottom"},
+  {"id": "b4", "name": "camel wide-leg trousers", "category": "bottom"},
+  {"id": "l1", "name": "black structured blazer", "category": "layering"},
+  {"id": "l2", "name": "beige knit cardigan", "category": "layering"},
+  {"id": "t7", "name": "grey oversized graphic tee", "category": "top"},
+  {"id": "b5", "name": "relaxed straight-leg denim", "category": "bottom"}
+]

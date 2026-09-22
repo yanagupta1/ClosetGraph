@@ -1,0 +1,4 @@
+langgraph
+pydantic
+groq
+python-dotenv
