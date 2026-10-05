@@ -1,0 +1,170 @@
+# occasion_mapping (7 total: g01, g06-g11)
+- id: g01
+  category: occasion_mapping
+  occasion: "first client meeting, conservative office"
+  hard_checks:
+    top_rank_excludes: [t1, t7, b2, b5]
+  notes: "Top pick should lean tailored trousers/blazer, not casual bottoms."
+
+- id: g06
+  category: occasion_mapping
+  occasion: "running errands and grabbing coffee"
+  hard_checks:
+    top_rank_excludes: [l1, b1]
+  notes: "Overdressed combo (blazer + tailored trousers) shouldn't top a mundane errands occasion."
+
+- id: g07
+  category: occasion_mapping
+  occasion: "museum visit and lunch with a friend"
+  hard_checks:
+    top_rank_excludes: [b5]
+  notes: "Smart casual should exclude the most relaxed denim from the top pick."
+
+- id: g08
+  category: occasion_mapping
+  occasion: "regular day at the office, business casual dress code"
+  hard_checks:
+    top_rank_excludes: [t1, t7, b5]
+  notes: "Tank alone, graphic tee, and relaxed denim shouldn't top plain business casual."
+
+- id: g09
+  category: occasion_mapping
+  occasion: "job interview at a conservative company"
+  hard_checks:
+    top_rank_excludes: [t1, t7, b2, b5]
+  notes: "Strictest occasion_mapping case, should mirror g01's constraints via the renamed Interviews heading."
+
+- id: g10
+  category: occasion_mapping
+  occasion: "going to a nightclub with friends"
+  hard_checks:
+    combination_appears_ranked: [t1]
+  notes: "Tests permissive nightlife guidance, tank top should be viable, not just excluded by default."
+
+- id: g11
+  category: occasion_mapping
+  occasion: "cocktail party at a friend's new apartment"
+  hard_checks:
+    top_rank_excludes: [t7, b5]
+  notes: "Tests the newly-split Semi-Formal/Cocktail chunk specifically, distinct from black-tie."
+
+# layering_elevation (4 total: g02, g12-g14)
+- id: g02
+  category: layering_elevation
+  occasion: "team happy hour, casual bar"
+  hard_checks:
+    combination_appears_ranked: [t1, l1]
+  notes: "Tests whether layering guidance is actually applied, not just known."
+
+- id: g12
+  category: layering_elevation
+  occasion: "work happy hour, want to look put together but relaxed"
+  hard_checks:
+    combination_appears_ranked: [t3, l2]
+  notes: "Tests Soft Layers guidance, cardigan should meaningfully elevate without needing a blazer."
+
+- id: g13
+  category: layering_elevation
+  occasion: "dressing up a plain top for a client meeting"
+  hard_checks:
+    combination_appears_ranked: [t4, l1]
+  notes: "Structured-layer elevation paired directly with a professional occasion."
+
+- id: g14
+  category: layering_elevation
+  occasion: "dinner date, upscale restaurant"
+  hard_checks:
+    combination_appears_ranked: [t5, l1]
+  notes: "Tests Coverage Through Layering + Sleeveless and Base Tops together."
+
+# layering_failure (4 total: g03, g15-g17)
+- id: g03
+  category: layering_failure
+  occasion: "first client meeting, conservative office"
+  hard_checks:
+    combination_not_top_rank: [t7, l1]
+  notes: "Structured layer shouldn't override a strongly casual base for a conservative context."
+
+- id: g15
+  category: layering_failure
+  occasion: "important client presentation"
+  hard_checks:
+    combination_not_top_rank: [t7, b5, l1]
+  notes: "Compounding casual signals (casual top AND casual bottom) shouldn't be rescued even together."
+
+- id: g16
+  category: layering_failure
+  occasion: "cocktail party at a friend's new apartment"
+  hard_checks:
+    combination_not_top_rank: [t1, l2]
+  notes: "Soft layer alone insufficient for a higher-stakes social occasion, per Soft Layers guidance."
+
+- id: g17
+  category: layering_failure
+  occasion: "first client meeting, conservative office"
+  hard_checks:
+    combination_not_top_rank: [t7, b5]
+  notes: "Baseline sanity check, fully casual pairing with zero layering attempt."
+
+# garment_denim (4 total: g05, g18-g20)
+- id: g05
+  category: garment_denim
+  occasion: "casual weekend brunch with friends"
+  hard_checks:
+    prefers_over: {higher: b2, lower: b5}
+  notes: "Tests denim formality-range recognition, not just 'denim is casual.'"
+
+- id: g18
+  category: garment_denim
+  occasion: "casual weekend brunch with friends"
+  hard_checks:
+    prefers_over: {higher: b2, lower: b5}
+  notes: "Re-test denim-range preference outside a strict business context."
+
+- id: g19
+  category: garment_denim
+  occasion: "business casual Friday at the office"
+  hard_checks:
+    top_rank_excludes: [b5]
+  notes: "Relaxed denim should lose out even on a casual office day; clean denim may still be fine."
+
+- id: g20
+  category: garment_denim
+  occasion: "smart casual lunch date"
+  hard_checks:
+    combination_appears_ranked: [t5]
+  notes: "Tests Sleeveless and Base Tops, refined sleeveless top should be viable without a forced layer."
+
+# wardrobe_gap (2 total: g04, g21)
+- id: g04
+  category: wardrobe_gap
+  occasion: "black-tie gala"
+  hard_checks:
+    reasoning_flags_gap: true
+  notes: "Wardrobe has no eveningwear; should surface the limitation, not fake it."
+
+- id: g21
+  category: wardrobe_gap
+  occasion: "attending a formal black-tie wedding"
+  hard_checks:
+    reasoning_flags_gap: true
+  notes: "Second gap case with different phrasing than g04, tests generalization beyond exact wording."
+
+# color_cohesion, LLM-judged (3 total)
+- id: g22
+  category: color_cohesion
+  judged: true
+  occasion: "team happy hour, casual bar"
+  judge_question: "Does the top-ranked outfit show thoughtful color cohesion rather than an arbitrary pairing?"
+
+- id: g23
+  category: color_cohesion
+  judged: true
+  occasion: "dinner date, upscale restaurant"
+  judge_question: "Does the top-ranked outfit's palette read as intentional and elevated, not mismatched?"
+
+- id: g24
+  category: color_cohesion
+  judged: true
+  occasion: "casual weekend brunch with friends"
+  judge_question: "Does the reasoning show awareness of color balance when justifying the top pick?"
