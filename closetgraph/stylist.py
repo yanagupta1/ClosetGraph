@@ -12,6 +12,9 @@ STYLIST_PROMPT_TEMPLATE = """You are a professional personal stylist evaluating 
 
 Occasion: {occasion}
 
+Relevant style guidance retrieved for this occasion:
+{guidance}
+
 You are given a list of candidate outfits, each made of items the person already owns. Judge how the items work TOGETHER as one composed outfit, not each item in isolation.
 
 Reasoning guidelines:
@@ -172,13 +175,16 @@ def rank_outfits(
     candidates: list[OutfitCandidate],
     wardrobe: list[WardrobeItem],
     occasion: str,
+    retrieved_guidance: list[str] | None = None,
 ) -> list[RankedOutfit]:
     load_dotenv()
     model = os.getenv("GROQ_MODEL", "openai/gpt-oss-20b")
 
+    guidance_text = "\n\n".join(retrieved_guidance or []) or "(none retrieved)"
     resolved_candidates = _resolve_candidates(candidates, wardrobe)
     prompt = STYLIST_PROMPT_TEMPLATE.format(
         occasion=occasion,
+        guidance=guidance_text,
         candidates=json.dumps(resolved_candidates, indent=2),
     )
 

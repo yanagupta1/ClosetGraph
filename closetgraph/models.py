@@ -23,3 +23,5 @@ class ClosetGraphState(TypedDict):
     occasion: str
     candidate_outfits: list[OutfitCandidate]
     ranked_outfits: list[RankedOutfit]
+    retrieved_guidance: list[str]  # style-guide chunks
+
