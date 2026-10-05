@@ -80,12 +80,12 @@ Some constraints can be deterministic, such as ownership checks and impossible c
 
 ## Stage 2: Style Guide RAG and Evals
 
-- [ ] Style-guide corpus outline created.
-- [ ] Initial style-guide documents authored or provided.
-- [ ] Chroma index built for style-guide retrieval.
-- [ ] Retrieval connected to Stylist reasoning.
-- [ ] Golden eval set covering ownership, layering, dress-code ranges, and ranking.
-- [ ] Deterministic outfit-validity checker.
+- [x] Style-guide corpus outline created.
+- [x] Initial style-guide documents authored or provided.
+- [x] Chroma index built for style-guide retrieval.
+- [x] Retrieval connected to Stylist reasoning.
+- [x] Golden eval set covering ownership, layering, dress-code ranges, and ranking.
+- [x] Deterministic outfit-validity checker.
 - [ ] First metrics recorded: validity rate, retrieval quality, latency, and common failure modes.
 
 **Done when:** styling recommendations are grounded in retrieved guidance and evals expose clear strengths and failures.
