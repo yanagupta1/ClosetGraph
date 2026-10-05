@@ -179,3 +179,45 @@ def test_rank_outfits_raises_on_persistent_failure(monkeypatch, sample_wardrobe)
             sample_wardrobe,
             "first client meeting, conservative office",
         )
+
+
+class FakeUsage:
+    def __init__(self, prompt_tokens, completion_tokens):
+        self.prompt_tokens = prompt_tokens
+        self.completion_tokens = completion_tokens
+
+
+class FakeCompletionsWithUsage:
+    def __init__(self, content):
+        self.content = content
+        self.calls = []
+
+    def create(self, **kwargs):
+        self.calls.append(kwargs)
+        response = FakeResponse(self.content)
+        response.usage = FakeUsage(prompt_tokens=10, completion_tokens=5)
+        return response
+
+
+def test_langfuse_client_initializes():
+    from langfuse import get_client
+
+    assert get_client() is not None
+
+
+def test_rank_outfits_logs_generation_usage_without_breaking(monkeypatch, sample_wardrobe):
+    # Observed (@observe) call plus the Langfuse generation.update usage path
+    # should run end to end on a mocked Groq response carrying .usage.
+    content = json.dumps(
+        [{"rank": 1, "items": ["t2", "b1", "l1"], "reasoning": "polished"}]
+    )
+    FakeGroq.completions = FakeCompletionsWithUsage(content)
+    monkeypatch.setattr("closetgraph.stylist.Groq", FakeGroq)
+
+    ranked = rank_outfits(
+        [OutfitCandidate(items=["t2", "b1", "l1"])],
+        sample_wardrobe,
+        "first client meeting",
+    )
+
+    assert ranked[0].items == ["t2", "b1", "l1"]

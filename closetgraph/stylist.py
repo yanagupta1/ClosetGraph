@@ -4,6 +4,7 @@ import re
 
 from dotenv import load_dotenv
 from groq import Groq
+from langfuse import get_client, observe
 
 from closetgraph.models import OutfitCandidate, RankedOutfit, WardrobeItem
 
@@ -90,6 +91,7 @@ def _parse_ranked_outfits(content: str) -> list[RankedOutfit]:
     return sorted(ranked, key=lambda outfit: outfit.rank)
 
 
+@observe()
 def rank_outfits(
     candidates: list[OutfitCandidate],
     wardrobe: list[WardrobeItem],
@@ -108,12 +110,40 @@ def rank_outfits(
     )
 
     client = Groq()
-    response = client.chat.completions.create(
-        model=model,
-        messages=[{"role": "user", "content": prompt}],
-        temperature=0,
+    langfuse = get_client()
+    # Reads LANGFUSE_PUBLIC_KEY / LANGFUSE_SECRET_KEY from env (loaded above
+    # via load_dotenv). If unset, the client is disabled and these calls no-op.
+    langfuse.update_current_span(
+        input={"occasion": occasion},
+        metadata={
+            "num_candidates": len(candidates),
+            "num_retrieved_guidance": len(retrieved_guidance or []),
+        },
     )
-    content = response.choices[0].message.content
+
+    with langfuse.start_as_current_observation(
+        name="groq-chat-completion",
+        as_type="generation",
+        model=model,
+        input=prompt,
+    ) as generation:
+        response = client.chat.completions.create(
+            model=model,
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0,
+        )
+        content = response.choices[0].message.content
+        usage = getattr(response, "usage", None)
+        if usage is not None:
+            generation.update(
+                output=content,
+                usage_details={
+                    "input": usage.prompt_tokens,
+                    "output": usage.completion_tokens,
+                },
+            )
+        else:
+            generation.update(output=content)
 
     try:
         return _parse_ranked_outfits(content)
