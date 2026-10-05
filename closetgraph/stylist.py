@@ -22,6 +22,7 @@ Reasoning guidelines:
 - An item's formality can shift depending on how it's styled. A tank top alone is casual, but layered under a structured blazer with tailored trousers, the same tank can read as business casual. A silk blouse with dark jeans is more polished than the jeans alone would suggest.
 - Layering pieces can raise the effective formality of what's underneath them when the combination makes sense. Penalize combinations that clash in formality or don't make practical sense together.
 - Favor outfits that are well-suited and coherent over outfits that are merely acceptable.
+Even when no candidate fully satisfies the occasion, always return your best 5 available candidates ranked by how close they come, with reasoning that explicitly names what's missing. Never return an outfit with empty items.
 
 Candidate outfits:
 {candidates}
