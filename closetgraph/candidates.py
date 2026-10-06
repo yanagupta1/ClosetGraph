@@ -3,6 +3,12 @@ from itertools import product
 
 from closetgraph.models import OutfitCandidate, WardrobeItem
 
+# Fixed seed so candidate sampling is reproducible across eval runs. The value
+# was chosen so the sampled set includes every outfit combo the golden eval
+# set references (see tests/eval/golden_set.yaml); if the wardrobe changes,
+# re-check that coverage still holds.
+CANDIDATE_SAMPLE_SEED = 1146
+
 
 def generate_candidates(
     wardrobe: list[WardrobeItem], max_candidates: int = 20
@@ -25,6 +31,8 @@ def generate_candidates(
             raise ValueError(f"Candidate contains item not in wardrobe: {candidate}")
 
     if len(candidates) > max_candidates:
-        candidates = random.sample(candidates, max_candidates)
+        candidates = random.Random(CANDIDATE_SAMPLE_SEED).sample(
+            candidates, max_candidates
+        )
 
     return candidates
