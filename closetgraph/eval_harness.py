@@ -1,4 +1,5 @@
 import json
+import time
 
 import yaml
 
@@ -61,7 +62,7 @@ def _check_hard_checks(hard_checks, ranked):
     return None
 
 
-def run_golden_set(golden_set_path, wardrobe_path) -> dict:
+def run_golden_set(golden_set_path, wardrobe_path, delay_seconds: float = 0) -> dict:
     """
     Loads the golden set and wardrobe, runs the full graph for each
     entry's occasion, checks hard_checks in code (no LLM) for
@@ -84,7 +85,9 @@ def run_golden_set(golden_set_path, wardrobe_path) -> dict:
     failed: list[dict] = []
     judged_pending: list[dict] = []
 
-    for entry in entries:
+    for index, entry in enumerate(entries):
+        if delay_seconds and index:
+            time.sleep(delay_seconds)
         result = graph.invoke(
             {
                 "wardrobe": wardrobe,
