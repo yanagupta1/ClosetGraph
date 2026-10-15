@@ -7,3 +7,4 @@ __pycache__/
 htmlcov/
 pytest-cache-files-*/
 chroma_db/
+eval_results.json
