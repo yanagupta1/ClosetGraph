@@ -82,13 +82,23 @@ Some constraints can be deterministic, such as ownership checks and impossible c
 
 - [x] Style-guide corpus outline created.
 - [x] Initial style-guide documents authored or provided.
-- [x] Chroma index built for style-guide retrieval.
-- [x] Retrieval connected to Stylist reasoning.
-- [x] Golden eval set covering ownership, layering, dress-code ranges, and ranking.
-- [x] Deterministic outfit-validity checker.
-- [ ] First metrics recorded: validity rate, retrieval quality, latency, and common failure modes.
+- [x] Chroma index built for style-guide retrieval (closetgraph/indexing.py, one Chroma collection, category metadata).
+- [x] Stratified per-category retrieval connected to Stylist reasoning (closetgraph/retrieval.py, retrieve_style_guidance node).
+- [x] Golden eval set covering ownership, layering, dress-code ranges, and ranking (tests/eval/golden_set.yaml, 24 cases).
+- [x] Deterministic outfit-validity checker (closetgraph/validity.py).
+- [x] Removed silent stylist fallback; persistent failures now raise instead of returning generic text.
+- [x] Seeded candidate sampling for reproducible eval runs.
+- [x] Langfuse tracing around the Groq calls.
+- [x] Evaluation methodology split into hard constraints, ranking preferences, and behavioral checks (type-tagged golden set).
+- [x] Pairwise compositional suitability tests with context reversal (tests/eval/pairwise_set.yaml, compare_pairwise).
+- [x] Budget-aware diagnostic runner for repeat runs and model comparison (run_pairwise_set).
+- [x] Model A/B comparison: gpt-oss-20b vs gpt-oss-120b on the pairwise set (findings in docs/eval-results.md).
+- [x] LLM-as-judge (rubric-based) for the color-cohesion cases, configurable judge model (closetgraph/judge.py).
+- [x] First metrics recorded: pass rate, failure modes, A/B results (docs/eval-results.md). Retrieval-quality and latency metrics still only in Langfuse, not summarized.
 
 **Done when:** styling recommendations are grounded in retrieved guidance and evals expose clear strengths and failures.
+
+Open follow-ups (not blocking Stage 2): automate the rubric judge across all behavioral cases (currently only the three color cases); dedup g18; quantify retrieval-quality and latency metrics in docs.
 
 ## Stage 3: Tool Context
 
