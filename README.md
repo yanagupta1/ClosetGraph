@@ -27,6 +27,6 @@ The Stage 1 walking skeleton is implemented as a notebook demo. It loads a small
 
 The initial handwritten design notes capture the early architecture, open questions, and decisions that shaped the roadmap:
 
-[View initial design notes](docs/handwritten_notes1.pdf)
+[View initial design notes](docs/handwritten_notes_updated.pdf)
 
 See [roadmap.md](roadmap.md) for the staged development plan.
