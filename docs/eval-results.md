@@ -108,9 +108,12 @@ each rubric.
 
 Findings:
 
-1. The judge correctly distinguishes g24's "judge the reasoning" framing from
-   g22/g23's "judge the palette," so g24 is strict by design (penalises a fine
-   outfit whose reasoning is colour-silent). Decide whether that is the intent.
+1. Two different things are measured, and the split is intentional. g22 and g23
+   judge OUTFIT COHESION (do the chosen colours actually work together); g24
+   judges the COLOUR-AWARE EXPLANATION (does the reasoning articulate colour
+   balance). g24 is therefore strict by design: a cohesive outfit still fails if
+   the reasoning is colour-silent. This distinction is stated explicitly in
+   g24's rubric.
 2. The judge surfaced a stylist output inconsistency: g23's reasoning references
    a "black structured blazer" that is not in the ranked item list (t5, b1).
    The items and the prose disagree - a stylist quality issue, not a judge one.
