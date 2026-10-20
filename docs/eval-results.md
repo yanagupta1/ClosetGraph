@@ -93,3 +93,24 @@ Decision: stay on gpt-oss-20b (it nails the primary compositional judgment;
 on the free tier). The deterministic formality engine is not needed - the
 reasoning is present. Revisit 120b only if context-dependent de-escalation
 becomes a priority.
+
+## Color-cohesion LLM judge, first verdicts (2026-10-20)
+
+Judge model gpt-oss-120b scoring the 20B stylist's top pick for g22-g24 against
+the draft rubrics. Compared against a manual read, the judge was faithful to
+each rubric.
+
+| id | top pick | verdict | note |
+| --- | --- | --- | --- |
+| g22 | navy top + dark jeans + blazer | pass, 3/5 | cohesive blue tones + black anchor, but the reasoning never states the colour logic (fair dock) |
+| g23 | cream blouse + black trousers | pass, 5/5 | classic elevated neutral contrast |
+| g24 | tank + camel trousers + beige cardigan | fail, 1/5 | g24's rubric judges the REASONING for colour awareness; the reasoning mentions none, so the fail is rubric-faithful even though the palette itself is fine |
+
+Findings:
+
+1. The judge correctly distinguishes g24's "judge the reasoning" framing from
+   g22/g23's "judge the palette," so g24 is strict by design (penalises a fine
+   outfit whose reasoning is colour-silent). Decide whether that is the intent.
+2. The judge surfaced a stylist output inconsistency: g23's reasoning references
+   a "black structured blazer" that is not in the ranked item list (t5, b1).
+   The items and the prose disagree - a stylist quality issue, not a judge one.

@@ -9,3 +9,4 @@ pytest-cache-files-*/
 chroma_db/
 eval_results.json
 ab_results.json
+judge_results.json
