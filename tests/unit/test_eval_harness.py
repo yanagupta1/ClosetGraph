@@ -53,6 +53,14 @@ def test_run_golden_set_passes_fails_and_collects_judged(tmp_path, monkeypatch):
             "occasion": "bar",
             "judge_question": "Is the palette cohesive?",
         },
+        {
+            # behavioral type -> collected, not hard-checked, even with hard_checks
+            "id": "e4",
+            "category": "layering_elevation",
+            "type": "behavioral",
+            "occasion": "gala",
+            "hard_checks": {"combination_appears_ranked": ["t1", "b5"]},
+        },
     ]
     golden_path, wardrobe_path = _write_inputs(tmp_path, entries)
 
@@ -63,6 +71,8 @@ def test_run_golden_set_passes_fails_and_collects_judged(tmp_path, monkeypatch):
         "errands": [RankedOutfit(items=["t1", "b1"], rank=1, reasoning="x")],
         # judged entry -> collected, not hard-checked
         "bar": [RankedOutfit(items=["t1", "b5"], rank=1, reasoning="x")],
+        # behavioral entry -> collected regardless of the combo appearing
+        "gala": [RankedOutfit(items=["t1", "b1"], rank=1, reasoning="x")],
     }
     monkeypatch.setattr(eval_harness, "build_graph", lambda: FakeGraph(rankings))
 
@@ -71,10 +81,14 @@ def test_run_golden_set_passes_fails_and_collects_judged(tmp_path, monkeypatch):
     assert result["passed"] == ["e1"]
     assert [f["id"] for f in result["failed"]] == ["e2"]
     assert "b1" in result["failed"][0]["reason"]
-    assert len(result["judged_pending"]) == 1
-    assert result["judged_pending"][0]["id"] == "e3"
-    assert result["judged_pending"][0]["judge_question"] == "Is the palette cohesive?"
-    assert result["judged_pending"][0]["top_outfit"] == ["t1", "b5"]
+    # e3 (judged) and e4 (behavioral) both collected, not pass/failed
+    collected = {b["id"] for b in result["behavioral_pending"]}
+    assert collected == {"e3", "e4"}
+    e3 = next(b for b in result["behavioral_pending"] if b["id"] == "e3")
+    assert e3["judge_question"] == "Is the palette cohesive?"
+    assert e3["top_outfit"] == ["t1", "b5"]
+    # all outputs structurally valid (one top + one bottom) -> no violations
+    assert result["constraint_violations"] == []
 
 
 def test_run_pairwise_case_asserts_favoring_and_records_reversal(monkeypatch, sample_wardrobe):
@@ -112,3 +126,55 @@ def test_run_pairwise_case_asserts_favoring_and_records_reversal(monkeypatch, sa
     assert result["favoring"]["passed"] is True
     # Reversal is recorded, not asserted: here A wins, so B did not auto-win.
     assert result["reversal"]["winner"] == "A"
+
+
+def test_run_pairwise_set_repeats_and_counts_favoring_wins(tmp_path, monkeypatch):
+    # B always wins the favoring occasion -> favoring_wins should equal repeats.
+    def fake_rank_outfits(candidates, wardrobe, occasion, retrieved_guidance=None):
+        outfit_b = ["t1", "b1", "l1"]
+        order = [c for c in candidates if c.items == outfit_b] + [
+            c for c in candidates if c.items != outfit_b
+        ]
+        return [
+            RankedOutfit(items=c.items, rank=i + 1, reasoning="stub")
+            for i, c in enumerate(order)
+        ]
+
+    monkeypatch.setattr(eval_harness, "rank_outfits", fake_rank_outfits)
+    monkeypatch.setattr(eval_harness, "retrieve_style_guidance", lambda occasion: [])
+
+    pairwise_path = tmp_path / "pairwise.yaml"
+    pairwise_path.write_text(
+        yaml.safe_dump(
+            [
+                {
+                    "id": "p01",
+                    "outfit_a": ["t1", "b1"],
+                    "outfit_b": ["t1", "b1", "l1"],
+                    "occasion_favoring_b": "client meeting",
+                }
+            ]
+        ),
+        encoding="utf-8",
+    )
+    wardrobe_path = tmp_path / "wardrobe.json"
+    wardrobe_path.write_text(
+        json.dumps(
+            [
+                {"id": "t1", "name": "tank", "category": "top"},
+                {"id": "b1", "name": "trousers", "category": "bottom"},
+                {"id": "l1", "name": "blazer", "category": "layering"},
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    results = eval_harness.run_pairwise_set(
+        str(pairwise_path), str(wardrobe_path), repeats=3
+    )
+
+    assert len(results) == 1
+    assert results[0]["id"] == "p01"
+    assert results[0]["repeats"] == 3
+    assert results[0]["favoring_wins"] == 3
+    assert len(results[0]["runs"]) == 3
