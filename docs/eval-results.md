@@ -62,3 +62,34 @@ model nondeterminism. One of the two is effectively redundant.
   model reasoning or expectation calibration.
 - LLM judge for the three color-cohesion cases not implemented.
 - Latency and token usage per call are visible in Langfuse, not captured here.
+
+## Pairwise A/B: gpt-oss-20b vs gpt-oss-120b (2026-10-20)
+
+Ran the three pairwise compositional cases (favoring + reversal) twice per
+model, throttled. "B favored" = model ranks the elevated/cleaner outfit first
+for the favoring (professional/polished) occasion.
+
+| case (favoring context) | 20b favors B | 120b favors B | 20b reversal | 120b reversal |
+| --- | --- | --- | --- | --- |
+| p01 blazer, client meeting | 2/2 | 2/2 | A, A | A, A |
+| p02 clean denim, business-casual Friday | 2/2 | 2/2 | B, B | B, A |
+| p03 cardigan, museum lunch | 2/2 | 2/2 | B, B | A, A |
+
+Findings:
+
+1. Both models get every favoring direction right (6/6), including the 20b.
+   The earlier g02/g12/g13/g14 "failures" were a measurement artifact of
+   forcing a specific combo into the top 5, not a reasoning failure. Asked the
+   direct A-vs-B question, the capability is clearly present.
+2. The models differ on the reversal (does elevation stop winning in a casual
+   context). 120b de-escalates correctly - drops the cardigan for a nightclub
+   (p03) - while 20b keeps favoring the more put-together option. 120b is
+   better at "layering does not always help"; 20b has a mild always-elevate bias.
+3. Nondeterminism confirmed at temp 0: 120b p02 reversal returned B then A on
+   identical input.
+
+Decision: stay on gpt-oss-20b (it nails the primary compositional judgment;
+120b's only edge is reversal nuance, not worth the extra output tokens/latency
+on the free tier). The deterministic formality engine is not needed - the
+reasoning is present. Revisit 120b only if context-dependent de-escalation
+becomes a priority.
