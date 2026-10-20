@@ -178,3 +178,41 @@ def test_run_pairwise_set_repeats_and_counts_favoring_wins(tmp_path, monkeypatch
     assert results[0]["repeats"] == 3
     assert results[0]["favoring_wins"] == 3
     assert len(results[0]["runs"]) == 3
+
+
+def test_run_golden_set_judges_rubric_color_case(tmp_path, monkeypatch):
+    from closetgraph.judge import JudgeVerdict
+
+    entries = [
+        {
+            "id": "c1",
+            "category": "color_cohesion",
+            "type": "behavioral",
+            "judged": True,
+            "occasion": "bar",
+            "judge_question": "Cohesive palette?",
+            "rubric": "Pass if colours are intentional.",
+        },
+    ]
+    golden_path, wardrobe_path = _write_inputs(tmp_path, entries)
+
+    rankings = {"bar": [RankedOutfit(items=["t1", "b1"], rank=1, reasoning="neutral base")]}
+    monkeypatch.setattr(eval_harness, "build_graph", lambda: FakeGraph(rankings))
+
+    captured = {}
+
+    def fake_judge(outfit, reasoning, occasion, rubric):
+        captured["outfit"] = outfit
+        captured["rubric"] = rubric
+        return JudgeVerdict(passed=True, score=5, rationale="cohesive neutrals")
+
+    monkeypatch.setattr(eval_harness, "judge_outfit", fake_judge)
+
+    result = eval_harness.run_golden_set(str(golden_path), str(wardrobe_path))
+
+    assert len(result["behavioral_pending"]) == 1
+    record = result["behavioral_pending"][0]
+    assert record["verdict"] == {"passed": True, "score": 5, "rationale": "cohesive neutrals"}
+    # the judge received resolved garment names, not raw ids
+    assert "tank" in captured["outfit"]
+    assert captured["rubric"] == "Pass if colours are intentional."

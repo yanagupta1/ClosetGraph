@@ -4,6 +4,7 @@ import time
 import yaml
 
 from closetgraph.graph import build_graph
+from closetgraph.judge import judge_outfit
 from closetgraph.models import OutfitCandidate, WardrobeItem
 from closetgraph.retrieval import retrieve_style_guidance
 from closetgraph.stylist import rank_outfits
@@ -112,17 +113,31 @@ def run_golden_set(golden_set_path, wardrobe_path, delay_seconds: float = 0) -> 
             constraint_violations.append({"id": entry["id"], "violations": violations})
 
         if entry.get("type") == "behavioral" or entry.get("judged") is True:
-            behavioral_pending.append(
-                {
-                    "id": entry["id"],
-                    "occasion": entry["occasion"],
-                    "notes": entry.get("notes"),
-                    "judge_question": entry.get("judge_question"),
-                    "expectation": entry.get("hard_checks"),
-                    "top_outfit": ranked[0].items if ranked else None,
-                    "top_reasoning": ranked[0].reasoning if ranked else None,
-                }
-            )
+            top_items = ranked[0].items if ranked else None
+            top_reasoning = ranked[0].reasoning if ranked else None
+            record = {
+                "id": entry["id"],
+                "occasion": entry["occasion"],
+                "notes": entry.get("notes"),
+                "judge_question": entry.get("judge_question"),
+                "expectation": entry.get("hard_checks"),
+                "top_outfit": top_items,
+                "top_reasoning": top_reasoning,
+            }
+            # Only the rubric-bearing color cases are auto-judged; everything
+            # else behavioral stays collected for manual review.
+            rubric = entry.get("rubric")
+            if rubric and top_items:
+                names_by_id = {item.id: item.name for item in wardrobe}
+                outfit_desc = ", ".join(names_by_id.get(i, i) for i in top_items)
+                try:
+                    verdict = judge_outfit(
+                        outfit_desc, top_reasoning or "", entry["occasion"], rubric
+                    )
+                    record["verdict"] = verdict.model_dump()
+                except Exception as error:
+                    record["judge_error"] = str(error)
+            behavioral_pending.append(record)
             continue
 
         reason = _check_hard_checks(entry["hard_checks"], ranked)
@@ -132,9 +147,12 @@ def run_golden_set(golden_set_path, wardrobe_path, delay_seconds: float = 0) -> 
             failed.append({"id": entry["id"], "reason": reason})
 
     ranking_total = len(passed) + len(failed)
+    judged = [b for b in behavioral_pending if "verdict" in b]
+    judged_passed = sum(1 for b in judged if b["verdict"]["passed"])
     print(
         f"{len(passed)}/{ranking_total} ranking checks passed, "
-        f"{len(behavioral_pending)} behavioral collected, "
+        f"{len(behavioral_pending)} behavioral collected "
+        f"({judged_passed}/{len(judged)} rubric-judged passed), "
         f"{len(constraint_violations)} with structural violations"
     )
     return {

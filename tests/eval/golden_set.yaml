@@ -193,6 +193,15 @@
   judged: true
   occasion: "team happy hour, casual bar"
   judge_question: "Does the top-ranked outfit show thoughtful color cohesion rather than an arbitrary pairing?"
+  # DRAFT rubric - edit to taste.
+  rubric: |
+    Pass if the outfit's colours work together through at least one clear
+    strategy: a neutral foundation, controlled contrast, related tones, a
+    complementary relationship, or intentional repetition - and the reasoning
+    reflects that relationship rather than pairing colours arbitrarily.
+    Fail if the palette reads as clashing or random with no discernible logic.
+    Score: 5 = clearly intentional and cohesive; 3 = acceptable but
+    unremarkable; 1 = clashing or arbitrary.
 
 - id: g23
   category: color_cohesion
@@ -200,6 +209,15 @@
   judged: true
   occasion: "dinner date, upscale restaurant"
   judge_question: "Does the top-ranked outfit's palette read as intentional and elevated, not mismatched?"
+  # DRAFT rubric - edit to taste.
+  rubric: |
+    Pass if the palette reads as intentional AND elevated for an upscale
+    evening setting: cohesive via neutrals, tonal harmony, or deliberate
+    contrast, and refined rather than casual-looking. The reasoning should
+    justify the colour choice as occasion-appropriate, not just acceptable.
+    Fail if the colours look mismatched, or merely daytime-casual with no
+    elevation. Score: 5 = intentional and evening-appropriate; 3 = cohesive
+    but not elevated; 1 = mismatched.
 
 - id: g24
   category: color_cohesion
@@ -207,3 +225,11 @@
   judged: true
   occasion: "casual weekend brunch with friends"
   judge_question: "Does the reasoning show awareness of color balance when justifying the top pick?"
+  # DRAFT rubric - edit to taste.
+  rubric: |
+    This case judges the REASONING, not just the outfit. Pass if the stylist's
+    reasoning explicitly shows awareness of colour balance - naming a neutral
+    base, a focal colour, tonal relationship, or deliberate contrast - when
+    justifying the pick. Fail if the reasoning ignores colour entirely or only
+    asserts the outfit "works" without any colour rationale. Score: 5 = clear,
+    specific colour reasoning; 3 = brief or implicit; 1 = no colour awareness.
