@@ -1,0 +1,34 @@
+# Pairwise compositional tests (DRAFT - author/edit the expectations).
+#
+# Each case compares the SUITABILITY of two specific outfits for an occasion,
+# without forcing either into the main top-5 ranking. The harness asks the
+# stylist to rank only outfit_a vs outfit_b.
+#
+# - occasion_favoring_b: a context where outfit B should be judged MORE
+#   suitable than A (hard expectation: B wins).
+# - occasion_reversal: a context where B should NOT automatically win
+#   (recorded for review, not asserted - "shouldn't win" is context-dependent).
+#
+# Item ids refer to docs/wardrobe.json. These are starting drafts; adjust the
+# outfits, occasions, and which direction is "favoring" to match your intent.
+
+- id: p01
+  question: "Does a structured layer improve professional suitability?"
+  outfit_a: [t1, b1]        # black tank + black tailored trousers
+  outfit_b: [t1, b1, l1]    # + black structured blazer
+  occasion_favoring_b: "conservative client meeting"
+  occasion_reversal: "casual outdoor summer gathering"
+
+- id: p02
+  question: "Does clean denim read as more suitable than relaxed denim for a polished-casual context?"
+  outfit_a: [t2, b5]        # white silk blouse + relaxed straight-leg denim
+  outfit_b: [t2, b2]        # white silk blouse + dark wash straight-leg jeans
+  occasion_favoring_b: "business casual Friday at the office"
+  occasion_reversal: "running errands and grabbing coffee"
+
+- id: p03
+  question: "Does a soft layer elevate a plain top enough for a daytime social occasion?"
+  outfit_a: [t3, b3]        # grey ribbed turtleneck + grey pleated midi skirt
+  outfit_b: [t3, b3, l2]    # + beige knit cardigan
+  occasion_favoring_b: "museum visit and lunch with a friend"
+  occasion_reversal: "nightclub with friends"

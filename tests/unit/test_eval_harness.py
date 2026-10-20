@@ -75,3 +75,40 @@ def test_run_golden_set_passes_fails_and_collects_judged(tmp_path, monkeypatch):
     assert result["judged_pending"][0]["id"] == "e3"
     assert result["judged_pending"][0]["judge_question"] == "Is the palette cohesive?"
     assert result["judged_pending"][0]["top_outfit"] == ["t1", "b5"]
+
+
+def test_run_pairwise_case_asserts_favoring_and_records_reversal(monkeypatch, sample_wardrobe):
+    # Stub the stylist: B (with blazer) wins the client meeting, A wins the picnic.
+    def fake_rank_outfits(candidates, wardrobe, occasion, retrieved_guidance=None):
+        outfit_b = ["t1", "b1", "l1"]
+        if "client meeting" in occasion:
+            order = [c for c in candidates if c.items == outfit_b] + [
+                c for c in candidates if c.items != outfit_b
+            ]
+        else:  # casual context -> the simpler outfit A wins
+            order = [c for c in candidates if c.items != outfit_b] + [
+                c for c in candidates if c.items == outfit_b
+            ]
+        return [
+            RankedOutfit(items=c.items, rank=i + 1, reasoning="stub")
+            for i, c in enumerate(order)
+        ]
+
+    monkeypatch.setattr(eval_harness, "rank_outfits", fake_rank_outfits)
+    monkeypatch.setattr(eval_harness, "retrieve_style_guidance", lambda occasion: [])
+
+    case = {
+        "id": "p01",
+        "question": "Does a blazer improve professional suitability?",
+        "outfit_a": ["t1", "b1"],
+        "outfit_b": ["t1", "b1", "l1"],
+        "occasion_favoring_b": "conservative client meeting",
+        "occasion_reversal": "casual outdoor summer gathering",
+    }
+
+    result = eval_harness.run_pairwise_case(case, sample_wardrobe)
+
+    assert result["favoring"]["winner"] == "B"
+    assert result["favoring"]["passed"] is True
+    # Reversal is recorded, not asserted: here A wins, so B did not auto-win.
+    assert result["reversal"]["winner"] == "A"

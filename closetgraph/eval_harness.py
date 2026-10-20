@@ -4,7 +4,9 @@ import time
 import yaml
 
 from closetgraph.graph import build_graph
-from closetgraph.models import WardrobeItem
+from closetgraph.models import OutfitCandidate, WardrobeItem
+from closetgraph.retrieval import retrieve_style_guidance
+from closetgraph.stylist import rank_outfits
 
 # Heuristic keywords for the reasoning_flags_gap hard check (pure code, no LLM).
 GAP_KEYWORDS = (
@@ -121,3 +123,67 @@ def run_golden_set(golden_set_path, wardrobe_path, delay_seconds: float = 0) -> 
         f"{len(judged_pending)} judged cases pending"
     )
     return {"passed": passed, "failed": failed, "judged_pending": judged_pending}
+
+
+def compare_pairwise(outfit_a, outfit_b, occasion, wardrobe, retrieved_guidance=None):
+    """
+    Compare the suitability of two specific outfits for one occasion by asking
+    the stylist to rank ONLY those two. This measures A-vs-B suitability
+    directly; it does not touch the main 20-candidate top 5.
+
+    Returns {"winner": "A"|"B"|None, "ranked": [...]}. winner is whichever
+    outfit the stylist ranks first; None if the ranking matches neither (e.g.
+    the model returned unexpected ids).
+    """
+    candidates = [OutfitCandidate(items=outfit_a), OutfitCandidate(items=outfit_b)]
+    if retrieved_guidance is None:
+        retrieved_guidance = retrieve_style_guidance(occasion)
+    ranked = rank_outfits(candidates, wardrobe, occasion, retrieved_guidance)
+
+    winner = None
+    if ranked:
+        top = set(ranked[0].items)
+        if top == set(outfit_a):
+            winner = "A"
+        elif top == set(outfit_b):
+            winner = "B"
+    return {
+        "winner": winner,
+        "ranked": [
+            {"rank": o.rank, "items": o.items, "reasoning": o.reasoning}
+            for o in ranked
+        ],
+    }
+
+
+def run_pairwise_case(case, wardrobe) -> dict:
+    """
+    Run one pairwise compositional case. The 'favoring' occasion has a hard
+    expectation (outfit B should be judged more suitable). The optional
+    'reversal' occasion is recorded but NOT hard-asserted: there B simply
+    should not automatically win, which is a softer, context-dependent signal
+    better left to review than a pass/fail.
+    """
+    outfit_a = case["outfit_a"]
+    outfit_b = case["outfit_b"]
+    result = {"id": case["id"], "question": case.get("question")}
+
+    favoring = compare_pairwise(outfit_a, outfit_b, case["occasion_favoring_b"], wardrobe)
+    result["favoring"] = {
+        "occasion": case["occasion_favoring_b"],
+        "expected_winner": "B",
+        "winner": favoring["winner"],
+        "passed": favoring["winner"] == "B",
+        "ranked": favoring["ranked"],
+    }
+
+    if case.get("occasion_reversal"):
+        reversal = compare_pairwise(outfit_a, outfit_b, case["occasion_reversal"], wardrobe)
+        result["reversal"] = {
+            "occasion": case["occasion_reversal"],
+            "note": "B should not automatically win here (recorded, not asserted)",
+            "winner": reversal["winner"],
+            "ranked": reversal["ranked"],
+        }
+
+    return result
