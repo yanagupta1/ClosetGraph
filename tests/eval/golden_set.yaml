@@ -1,6 +1,21 @@
+# Golden eval set (type-tagged draft - review the `type` on each entry).
+#
+# `type` determines how the harness evaluates an entry:
+#   ranking_preference - an assertion about the full ranking (an item or combo
+#                        should / should not appear near the top). Auto-checked.
+#   behavioral         - a capability we OBSERVE rather than force (e.g. the
+#                        model recognizes a combo as viable). Collected for
+#                        rubric/manual review, NOT pass/fail. The former
+#                        combination_appears_ranked cases moved here so they no
+#                        longer demand a specific top-5 slot; the pairwise
+#                        compositional version lives in pairwise_set.yaml.
+# Hard constraints (ownership, one top + one bottom, no duplicates) are enforced
+# on every ranked output by the harness via validity.py, not per-entry here.
+
 # occasion_mapping (7 total: g01, g06-g11)
 - id: g01
   category: occasion_mapping
+  type: ranking_preference
   occasion: "first client meeting, conservative office"
   hard_checks:
     top_rank_excludes: [t1, t7, b2, b5]
@@ -8,6 +23,7 @@
 
 - id: g06
   category: occasion_mapping
+  type: ranking_preference
   occasion: "running errands and grabbing coffee"
   hard_checks:
     top_rank_excludes: [l1, b1]
@@ -15,6 +31,7 @@
 
 - id: g07
   category: occasion_mapping
+  type: ranking_preference
   occasion: "museum visit and lunch with a friend"
   hard_checks:
     top_rank_excludes: [b5]
@@ -22,6 +39,7 @@
 
 - id: g08
   category: occasion_mapping
+  type: ranking_preference
   occasion: "regular day at the office, business casual dress code"
   hard_checks:
     top_rank_excludes: [t1, t7, b5]
@@ -29,6 +47,7 @@
 
 - id: g09
   category: occasion_mapping
+  type: ranking_preference
   occasion: "job interview at a conservative company"
   hard_checks:
     top_rank_excludes: [t1, t7, b2, b5]
@@ -36,6 +55,7 @@
 
 - id: g10
   category: occasion_mapping
+  type: behavioral
   occasion: "going to a nightclub with friends"
   hard_checks:
     combination_appears_ranked: [t1]
@@ -43,14 +63,16 @@
 
 - id: g11
   category: occasion_mapping
+  type: ranking_preference
   occasion: "cocktail party at a friend's new apartment"
   hard_checks:
     top_rank_excludes: [t7, b5]
   notes: "Tests the newly-split Semi-Formal/Cocktail chunk specifically, distinct from black-tie."
 
-# layering_elevation (4 total: g02, g12-g14)
+# layering_elevation (4 total: g02, g12-g14) - now behavioral; pairwise versions in pairwise_set.yaml
 - id: g02
   category: layering_elevation
+  type: behavioral
   occasion: "team happy hour, casual bar"
   hard_checks:
     combination_appears_ranked: [t1, l1]
@@ -58,6 +80,7 @@
 
 - id: g12
   category: layering_elevation
+  type: behavioral
   occasion: "work happy hour, want to look put together but relaxed"
   hard_checks:
     combination_appears_ranked: [t3, l2]
@@ -65,6 +88,7 @@
 
 - id: g13
   category: layering_elevation
+  type: behavioral
   occasion: "dressing up a plain top for a client meeting"
   hard_checks:
     combination_appears_ranked: [t4, l1]
@@ -72,6 +96,7 @@
 
 - id: g14
   category: layering_elevation
+  type: behavioral
   occasion: "dinner date, upscale restaurant"
   hard_checks:
     combination_appears_ranked: [t5, l1]
@@ -80,6 +105,7 @@
 # layering_failure (4 total: g03, g15-g17)
 - id: g03
   category: layering_failure
+  type: ranking_preference
   occasion: "first client meeting, conservative office"
   hard_checks:
     combination_not_top_rank: [t7, l1]
@@ -87,6 +113,7 @@
 
 - id: g15
   category: layering_failure
+  type: ranking_preference
   occasion: "important client presentation"
   hard_checks:
     combination_not_top_rank: [t7, b5, l1]
@@ -94,6 +121,7 @@
 
 - id: g16
   category: layering_failure
+  type: ranking_preference
   occasion: "cocktail party at a friend's new apartment"
   hard_checks:
     combination_not_top_rank: [t1, l2]
@@ -101,6 +129,7 @@
 
 - id: g17
   category: layering_failure
+  type: ranking_preference
   occasion: "first client meeting, conservative office"
   hard_checks:
     combination_not_top_rank: [t7, b5]
@@ -109,13 +138,16 @@
 # garment_denim (4 total: g05, g18-g20)
 - id: g05
   category: garment_denim
+  type: ranking_preference
   occasion: "casual weekend brunch with friends"
   hard_checks:
     prefers_over: {higher: b2, lower: b5}
   notes: "Tests denim formality-range recognition, not just 'denim is casual.'"
 
+# NOTE: g18 is identical to g05 (same occasion + check) - candidate for removal (dedup).
 - id: g18
   category: garment_denim
+  type: ranking_preference
   occasion: "casual weekend brunch with friends"
   hard_checks:
     prefers_over: {higher: b2, lower: b5}
@@ -123,6 +155,7 @@
 
 - id: g19
   category: garment_denim
+  type: ranking_preference
   occasion: "business casual Friday at the office"
   hard_checks:
     top_rank_excludes: [b5]
@@ -130,6 +163,7 @@
 
 - id: g20
   category: garment_denim
+  type: behavioral
   occasion: "smart casual lunch date"
   hard_checks:
     combination_appears_ranked: [t5]
@@ -138,6 +172,7 @@
 # wardrobe_gap (2 total: g04, g21)
 - id: g04
   category: wardrobe_gap
+  type: behavioral
   occasion: "black-tie gala"
   hard_checks:
     reasoning_flags_gap: true
@@ -145,6 +180,7 @@
 
 - id: g21
   category: wardrobe_gap
+  type: behavioral
   occasion: "attending a formal black-tie wedding"
   hard_checks:
     reasoning_flags_gap: true
@@ -153,18 +189,21 @@
 # color_cohesion, LLM-judged (3 total)
 - id: g22
   category: color_cohesion
+  type: behavioral
   judged: true
   occasion: "team happy hour, casual bar"
   judge_question: "Does the top-ranked outfit show thoughtful color cohesion rather than an arbitrary pairing?"
 
 - id: g23
   category: color_cohesion
+  type: behavioral
   judged: true
   occasion: "dinner date, upscale restaurant"
   judge_question: "Does the top-ranked outfit's palette read as intentional and elevated, not mismatched?"
 
 - id: g24
   category: color_cohesion
+  type: behavioral
   judged: true
   occasion: "casual weekend brunch with friends"
   judge_question: "Does the reasoning show awareness of color balance when justifying the top pick?"
