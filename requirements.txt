@@ -2,3 +2,5 @@ langgraph
 pydantic
 groq
 python-dotenv
+chromadb
+langfuse

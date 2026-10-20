@@ -3,7 +3,7 @@ from closetgraph.models import RankedOutfit
 
 
 def test_graph_generates_candidates_and_ranked_outfits(monkeypatch, sample_wardrobe):
-    def fake_rank_outfits(candidates, wardrobe, occasion):
+    def fake_rank_outfits(candidates, wardrobe, occasion, retrieved_guidance=None):
         assert len(candidates) == 12
         assert wardrobe == sample_wardrobe
         assert occasion == "team happy hour, casual bar"
@@ -16,6 +16,7 @@ def test_graph_generates_candidates_and_ranked_outfits(monkeypatch, sample_wardr
         ]
 
     monkeypatch.setattr("closetgraph.graph.rank_outfits", fake_rank_outfits)
+    monkeypatch.setattr("closetgraph.graph.retrieve_style_guidance", lambda occasion: [])
     graph = build_graph()
 
     result = graph.invoke(
@@ -40,7 +41,7 @@ def test_graph_generates_candidates_and_ranked_outfits(monkeypatch, sample_wardr
 def test_graph_preserves_occasion_through_stylist_node(monkeypatch, sample_wardrobe):
     seen = {}
 
-    def fake_rank_outfits(candidates, wardrobe, occasion):
+    def fake_rank_outfits(candidates, wardrobe, occasion, retrieved_guidance=None):
         seen["occasion"] = occasion
         return [
             RankedOutfit(
@@ -51,6 +52,7 @@ def test_graph_preserves_occasion_through_stylist_node(monkeypatch, sample_wardr
         ]
 
     monkeypatch.setattr("closetgraph.graph.rank_outfits", fake_rank_outfits)
+    monkeypatch.setattr("closetgraph.graph.retrieve_style_guidance", lambda occasion: [])
     graph = build_graph()
 
     result = graph.invoke(

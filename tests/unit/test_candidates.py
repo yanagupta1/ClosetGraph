@@ -38,17 +38,14 @@ def test_generate_candidates_validates_all_ids_are_owned(sample_wardrobe):
         assert set(candidate.items).issubset(owned_ids)
 
 
-def test_generate_candidates_samples_when_over_cap(monkeypatch, sample_wardrobe):
-    sampled = {}
+def test_generate_candidates_samples_deterministically_when_over_cap(sample_wardrobe):
+    first = generate_candidates(sample_wardrobe, max_candidates=5)
+    second = generate_candidates(sample_wardrobe, max_candidates=5)
 
-    def fake_sample(candidates, max_candidates):
-        sampled["total"] = len(candidates)
-        sampled["max_candidates"] = max_candidates
-        return candidates[:max_candidates]
+    assert len(first) == 5
+    # Seeded sampling must be reproducible across calls so eval runs are stable.
+    assert [c.items for c in first] == [c.items for c in second]
 
-    monkeypatch.setattr("closetgraph.candidates.random.sample", fake_sample)
-
-    candidates = generate_candidates(sample_wardrobe, max_candidates=5)
-
-    assert len(candidates) == 5
-    assert sampled == {"total": 12, "max_candidates": 5}
+    owned_ids = {item.id for item in sample_wardrobe}
+    for candidate in first:
+        assert set(candidate.items).issubset(owned_ids)

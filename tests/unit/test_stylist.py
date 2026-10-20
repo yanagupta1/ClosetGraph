@@ -5,7 +5,6 @@ import pytest
 from closetgraph.models import OutfitCandidate, RankedOutfit
 from closetgraph.stylist import (
     _extract_json_array,
-    _fallback_rank_outfits,
     _parse_ranked_outfits,
     _resolve_candidates,
     rank_outfits,
@@ -158,31 +157,67 @@ def test_rank_outfits_retries_after_invalid_json(monkeypatch, sample_wardrobe):
     assert completions.calls[1]["messages"][0]["role"] == "system"
 
 
-def test_rank_outfits_falls_back_when_groq_call_fails(monkeypatch, sample_wardrobe):
-    completions = FakeCompletions([RuntimeError("api down")])
-    FakeGroq.completions = completions
+def test_rank_outfits_raises_on_persistent_failure(monkeypatch, sample_wardrobe):
+    # The Groq call itself fails: the real error propagates, no fallback.
+    FakeGroq.completions = FakeCompletions([RuntimeError("api down")])
+    monkeypatch.setattr("closetgraph.stylist.Groq", FakeGroq)
+
+    with pytest.raises(RuntimeError, match="api down"):
+        rank_outfits(
+            [OutfitCandidate(items=["t1", "b1", "l1"])],
+            sample_wardrobe,
+            "first client meeting, conservative office",
+        )
+
+    # Both parse attempts fail: the parse ValueError propagates, no fallback.
+    FakeGroq.completions = FakeCompletions(["not json", "still not json"])
+    monkeypatch.setattr("closetgraph.stylist.Groq", FakeGroq)
+
+    with pytest.raises(ValueError):
+        rank_outfits(
+            [OutfitCandidate(items=["t1", "b1", "l1"])],
+            sample_wardrobe,
+            "first client meeting, conservative office",
+        )
+
+
+class FakeUsage:
+    def __init__(self, prompt_tokens, completion_tokens):
+        self.prompt_tokens = prompt_tokens
+        self.completion_tokens = completion_tokens
+
+
+class FakeCompletionsWithUsage:
+    def __init__(self, content):
+        self.content = content
+        self.calls = []
+
+    def create(self, **kwargs):
+        self.calls.append(kwargs)
+        response = FakeResponse(self.content)
+        response.usage = FakeUsage(prompt_tokens=10, completion_tokens=5)
+        return response
+
+
+def test_langfuse_client_initializes():
+    from langfuse import get_client
+
+    assert get_client() is not None
+
+
+def test_rank_outfits_logs_generation_usage_without_breaking(monkeypatch, sample_wardrobe):
+    # Observed (@observe) call plus the Langfuse generation.update usage path
+    # should run end to end on a mocked Groq response carrying .usage.
+    content = json.dumps(
+        [{"rank": 1, "items": ["t2", "b1", "l1"], "reasoning": "polished"}]
+    )
+    FakeGroq.completions = FakeCompletionsWithUsage(content)
     monkeypatch.setattr("closetgraph.stylist.Groq", FakeGroq)
 
     ranked = rank_outfits(
-        [OutfitCandidate(items=["t1", "b1", "l1"])],
+        [OutfitCandidate(items=["t2", "b1", "l1"])],
         sample_wardrobe,
-        "first client meeting, conservative office",
-    )
-
-    assert len(ranked) == 1
-    assert ranked[0].items == ["t1", "b1", "l1"]
-
-
-def test_fallback_rank_outfits_prefers_polished_items_for_professional_context(sample_wardrobe):
-    candidates = [
-        OutfitCandidate(items=["t1", "b2"]),
-        OutfitCandidate(items=["t2", "b1", "l1"]),
-    ]
-
-    ranked = _fallback_rank_outfits(
-        candidates,
-        sample_wardrobe,
-        "first client meeting, conservative office",
+        "first client meeting",
     )
 
     assert ranked[0].items == ["t2", "b1", "l1"]
