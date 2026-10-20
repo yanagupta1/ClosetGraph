@@ -1,26 +1,43 @@
 # Weather and Practicality Guidance
 
-## Warm Weather
+## Warm Conditions
 
-Warm conditions favor breathable garments, lighter layers, and silhouettes that provide physical comfort while still satisfying the occasion.
+Warm temperatures favor breathable fabrics, lighter layers, and
+silhouettes that remain physically comfortable for the expected
+duration outdoors.
 
-Avoid unnecessary heavy layering solely to increase formality when equivalent polish can be achieved through more appropriate garment choices.
+Heavy layering purely to increase formality should be avoided when
+equivalent polish is achievable through lighter garment choices
+instead. A blazer is not the only path to a structured look.
 
-For outdoor or prolonged exposure, heat practicality should meaningfully affect ranking.
+## Cold Conditions
 
-## Cold Weather
+Cold temperatures increase the importance of coverage, fabric weight,
+and functional outerwear.
 
-Cold conditions increase the importance of coverage, fabric weight, and functional layering.
+A functional outer layer, such as a coat or substantial jacket, should
+be evaluated as part of the complete outfit rather than treated as an
+afterthought added on top of it. The outfit should remain coherent if
+the outer layer is removed indoors.
 
-Layers should complement the underlying outfit rather than merely hide it. When possible, the outfit should remain coherent if an outer layer is removed indoors.
+If the wardrobe lacks weather-appropriate outerwear for cold
+conditions, note the limitation rather than recommending an outfit
+that ignores the temperature.
 
-Practical warmth should be considered alongside occasion suitability.
+## Precipitation
 
-## Rain, Snow, and Wind
+Rain or snow can make an otherwise well-suited outfit impractical.
 
-Precipitation and strong wind can make an otherwise stylish outfit impractical.
+Favor combinations that include weather-resistant outerwear or
+reasonably protective footwear when precipitation is expected. When
+no genuinely suitable option exists in the wardrobe, say so rather
+than ignoring the conditions.
 
-Consider whether garment materials, lengths, coverage, and silhouettes are appropriate for expected conditions. When reasonable alternatives exist, weather-inappropriate combinations should rank lower.
+## Wind
 
-If the wardrobe lacks a practical option, surface the limitation rather than ignoring the conditions.
+Strong wind affects looser silhouettes, long skirts, and lightweight
+layers more than fitted or structured pieces.
 
+Under windy conditions, structured or fitted combinations may be
+more practical than loose or flowing ones, independent of
+temperature.
