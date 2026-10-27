@@ -5,7 +5,7 @@ from typing import Literal, TypedDict
 class WardrobeItem(BaseModel):
     id: str
     name: str  # free text, e.g. "black scoop-neck tank top"
-    category: Literal["top", "bottom", "layering"]
+    category: Literal["top", "bottom", "layering", "accessory"]
 
 
 class OutfitCandidate(BaseModel):
