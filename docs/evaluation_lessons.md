@@ -80,3 +80,46 @@ and include a reversal so you are measuring understanding of the transformation
 rather than a memorized preference. "The model can reason" and "the model ranks
 the way I expected" are different claims; rigid top-N checks quietly test the
 second while you believe you are testing the first.
+
+## 4. Temperature 0 does not mean reproducible
+
+**Issue.** Identical evaluation inputs produced different rankings across runs; a
+check could pass one run and fail the next with nothing changed.
+
+**Root cause.** Temperature 0 makes token selection greedy but does not make a
+hosted reasoning model deterministic - the reasoning trace, server-side
+batching, and provider nondeterminism still vary the output. Observed: two
+golden cases that were identical at the time (same occasion and check) returned
+different results; and in the 20B-vs-120B comparison the 120B returned "B" then
+"A" on the same pairwise input across two runs.
+
+**Handling.** Treat single-run pass/fail as noisy. The diagnostic runner
+(`run_pairwise_set`) repeats each case N times and reports how often the expected
+relationship holds, so conclusions rest on a rate rather than one sample.
+
+**Takeaway.** Do not assume temperature 0 gives reproducibility from a hosted
+model. Measure run-to-run variance before trusting any single eval number, and
+report pass rates over repeats rather than a lone pass/fail.
+
+## 5. Match the verifier to the claim, and never let a model grade itself
+
+**Issue.** The golden set mixes objective facts (ownership; "this item should not
+top the ranking"), relational judgments (is B more suitable than A here), and
+subjective qualities (is the palette cohesive). One check mechanism cannot serve
+all three well.
+
+**Root cause.** Different claim types need different verifiers. Using code for
+everything cannot judge subjective quality; using an LLM for everything wastes
+calls on facts code can check exactly and applies brittle exact-match to things
+that are inherently a matter of degree.
+
+**Fix.** Three mechanisms, routed by expectation type: deterministic Python for
+hard constraints and ranking preferences, a pairwise stylist comparison for
+relational claims, and an LLM-as-judge only for the subjective color cases. The
+judge runs on a different model (120B) than the stylist (20B) so it is not
+grading its own family's output.
+
+**Takeaway.** Pick the cheapest verifier that fits the claim - code for
+objective, pairwise for relational, an LLM judge for subjective - and never
+evaluate a model with itself. Self-grading correlates errors and inflates
+scores.
