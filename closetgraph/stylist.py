@@ -28,7 +28,7 @@ Even when no candidate fully satisfies the occasion, always return your best 5 a
 Candidate outfits:
 {candidates}
 
-Return your top 5 ranked outfits as a JSON array, best (1) to fifth-best (5), and nothing else, no markdown, no prose before or after. Each entry must match this exact shape:
+Return your top 5 ranked outfits as a JSON array, best (1) to fifth-best (5), and nothing else, no markdown, no prose before or after. Each outfit's reasoning must describe only the items in that outfit's "items" list; do not mention any garment that is not in that outfit. Each entry must match this exact shape:
 
 [
   {{"rank": 1, "items": ["<item_id>", "<item_id>"], "reasoning": "<one sentence on why this works for the occasion>"}},

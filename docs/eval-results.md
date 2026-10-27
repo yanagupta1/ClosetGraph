@@ -108,9 +108,35 @@ each rubric.
 
 Findings:
 
-1. The judge correctly distinguishes g24's "judge the reasoning" framing from
-   g22/g23's "judge the palette," so g24 is strict by design (penalises a fine
-   outfit whose reasoning is colour-silent). Decide whether that is the intent.
+1. Two different things are measured, and the split is intentional. g22 and g23
+   judge OUTFIT COHESION (do the chosen colours actually work together); g24
+   judges the COLOUR-AWARE EXPLANATION (does the reasoning articulate colour
+   balance). g24 is therefore strict by design: a cohesive outfit still fails if
+   the reasoning is colour-silent. This distinction is stated explicitly in
+   g24's rubric.
 2. The judge surfaced a stylist output inconsistency: g23's reasoning references
    a "black structured blazer" that is not in the ranked item list (t5, b1).
    The items and the prose disagree - a stylist quality issue, not a judge one.
+
+## Committed eval-runner run (2026-10-27)
+
+First run through the committed CLI
+(`scripts/run_evals.py --suite both --repeats 1 --delay 60`); full report in
+`docs/stage2-eval-report.json`.
+
+- Pairwise: p01 (blazer) favored B; p02 (clean denim) favored B; p03 (soft
+  cardigan) favored A - on this single run the cardigan did NOT beat the plain
+  turtleneck + skirt for a museum lunch. Single run, so noisy (see lesson 4);
+  p01/p02 match the earlier A/B.
+- Golden: did not complete. The first stylist request hit Groq's free-tier
+  per-request cap - HTTP 413, "Request too large ... TPM Limit 8000, Requested
+  8175." A single 20-candidate golden prompt plus its completion allotment now
+  exceeds 8000 tokens/minute, so throttling (spacing calls) cannot help - the
+  request itself is too large. `run_golden_set` has no per-case catch, so the
+  first 413 aborted the whole golden pass; the runner recorded it in `errors`
+  and continued to pairwise instead of crashing.
+
+The runner behaved correctly (ran pairwise, captured the golden error without
+crashing). The earlier completed golden pass (15/21) still stands. Fix
+(follow-up): bring the golden request under 8000 - lower max_completion_tokens
+and/or compact the candidate serialization or retrieve fewer chunks.

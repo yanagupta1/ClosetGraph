@@ -144,14 +144,15 @@
     prefers_over: {higher: b2, lower: b5}
   notes: "Tests denim formality-range recognition, not just 'denim is casual.'"
 
-# NOTE: g18 is identical to g05 (same occasion + check) - candidate for removal (dedup).
+# g18 replaces a former duplicate of g05; now probes the permissive end of the
+# denim range (DRAFT - adjust the occasion/expectation to taste).
 - id: g18
   category: garment_denim
-  type: ranking_preference
-  occasion: "casual weekend brunch with friends"
+  type: behavioral
+  occasion: "lazy Sunday coffee run and errands"
   hard_checks:
-    prefers_over: {higher: b2, lower: b5}
-  notes: "Re-test denim-range preference outside a strict business context."
+    combination_appears_ranked: [b5]
+  notes: "Relaxed denim should be viable for a genuinely casual outing - confirms the model doesn't over-penalise b5 everywhere. With g05 (clean denim preferred for polished-casual) and g19 (relaxed denim excluded for business casual), this completes a three-point denim-range probe."
 
 - id: g19
   category: garment_denim
@@ -227,9 +228,14 @@
   judge_question: "Does the reasoning show awareness of color balance when justifying the top pick?"
   # DRAFT rubric - edit to taste.
   rubric: |
-    This case judges the REASONING, not just the outfit. Pass if the stylist's
-    reasoning explicitly shows awareness of colour balance - naming a neutral
-    base, a focal colour, tonal relationship, or deliberate contrast - when
-    justifying the pick. Fail if the reasoning ignores colour entirely or only
-    asserts the outfit "works" without any colour rationale. Score: 5 = clear,
-    specific colour reasoning; 3 = brief or implicit; 1 = no colour awareness.
+    Scope: this case judges the EXPLANATION, not the outfit. It is distinct from
+    g22 and g23, which judge whether the outfit's actual colours are cohesive.
+    Here a perfectly cohesive outfit can still fail if the reasoning never
+    mentions colour - we are testing whether the model can articulate colour
+    balance, not whether the palette happens to work.
+    Pass if the stylist's reasoning explicitly shows awareness of colour balance
+    - naming a neutral base, a focal colour, tonal relationship, or deliberate
+    contrast - when justifying the pick. Fail if the reasoning ignores colour
+    entirely or only asserts the outfit "works" without any colour rationale.
+    Score: 5 = clear, specific colour reasoning; 3 = brief or implicit;
+    1 = no colour awareness.
