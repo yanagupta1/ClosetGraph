@@ -5,8 +5,8 @@ import pytest
 from closetgraph.models import OutfitCandidate, RankedOutfit
 from closetgraph.stylist import (
     _extract_json_array,
+    _format_candidates,
     _parse_ranked_outfits,
-    _resolve_candidates,
     rank_outfits,
 )
 
@@ -51,20 +51,15 @@ class FakeGroq:
         self.chat = FakeChat(self.completions)
 
 
-def test_resolve_candidates_replaces_ids_with_full_items(sample_wardrobe):
+def test_format_candidates_produces_compact_lines(sample_wardrobe):
     candidates = [OutfitCandidate(items=["t2", "b1", "l1"])]
 
-    resolved = _resolve_candidates(candidates, sample_wardrobe)
+    formatted = _format_candidates(candidates, sample_wardrobe)
 
-    assert resolved == [
-        {
-            "items": [
-                {"id": "t2", "name": "white silk blouse", "category": "top"},
-                {"id": "b1", "name": "black tailored trousers", "category": "bottom"},
-                {"id": "l1", "name": "black structured blazer", "category": "layering"},
-            ]
-        }
-    ]
+    assert formatted == (
+        "1. t2 (white silk blouse, top) + b1 (black tailored trousers, bottom) "
+        "+ l1 (black structured blazer, layering)"
+    )
 
 
 @pytest.mark.parametrize(

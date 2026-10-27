@@ -37,23 +37,25 @@ Return your top 5 ranked outfits as a JSON array, best (1) to fifth-best (5), an
 """
 
 
-def _resolve_candidates(
+def _format_candidates(
     candidates: list[OutfitCandidate], wardrobe: list[WardrobeItem]
-) -> list[dict[str, object]]:
+) -> str:
+    """
+    One compact line per candidate outfit, e.g.
+    "1. t1 (black scoop-neck tank top, top) + b1 (black tailored trousers, bottom)".
+    Keeps the item id (which the stylist must return), name, and category, but
+    drops the verbose indented JSON - the candidate block was ~58% of the prompt
+    and the repeated keys/braces were pure overhead.
+    """
     wardrobe_by_id = {item.id: item for item in wardrobe}
-    resolved = []
-
-    for candidate in candidates:
-        resolved.append(
-            {
-                "items": [
-                    wardrobe_by_id[item_id].model_dump()
-                    for item_id in candidate.items
-                ]
-            }
-        )
-
-    return resolved
+    lines = []
+    for index, candidate in enumerate(candidates, start=1):
+        parts = [
+            f"{item_id} ({wardrobe_by_id[item_id].name}, {wardrobe_by_id[item_id].category})"
+            for item_id in candidate.items
+        ]
+        lines.append(f"{index}. " + " + ".join(parts))
+    return "\n".join(lines)
 
 
 def _extract_json_array(content: str | None) -> str:
@@ -102,11 +104,10 @@ def rank_outfits(
     model = os.getenv("GROQ_MODEL", "openai/gpt-oss-20b")
 
     guidance_text = "\n\n".join(retrieved_guidance or []) or "(none retrieved)"
-    resolved_candidates = _resolve_candidates(candidates, wardrobe)
     prompt = STYLIST_PROMPT_TEMPLATE.format(
         occasion=occasion,
         guidance=guidance_text,
-        candidates=json.dumps(resolved_candidates, indent=2),
+        candidates=_format_candidates(candidates, wardrobe),
     )
 
     client = Groq()
@@ -131,7 +132,7 @@ def rank_outfits(
             model=model,
             messages=[{"role": "user", "content": prompt}],
             temperature=0,
-            max_completion_tokens=8192,
+            max_completion_tokens=4096,
         )
         content = response.choices[0].message.content
         usage = getattr(response, "usage", None)
@@ -165,7 +166,7 @@ def rank_outfits(
                 },
             ],
             temperature=0,
-            max_completion_tokens=8192,
+            max_completion_tokens=4096,
         )
         retry_content = retry_response.choices[0].message.content
         return _parse_ranked_outfits(retry_content)
