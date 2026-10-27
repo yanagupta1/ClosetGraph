@@ -1,0 +1,229 @@
+{
+  "config": {
+    "suite": "both",
+    "repeats": 1,
+    "delay_seconds": 60.0,
+    "golden_path": "tests/eval/golden_set.yaml",
+    "pairwise_path": "tests/eval/pairwise_set.yaml",
+    "wardrobe_path": "docs/wardrobe.json",
+    "groq_model": "openai/gpt-oss-20b",
+    "judge_model": "openai/gpt-oss-120b",
+    "started_at": "2026-10-27T15:48:19.731624+00:00",
+    "finished_at": "2026-10-27T16:10:41.936819+00:00"
+  },
+  "golden": [],
+  "pairwise": [
+    {
+      "id": "p01",
+      "question": "Does a structured layer improve professional suitability?",
+      "favoring_wins": 1,
+      "repeats": 1,
+      "runs": [
+        {
+          "id": "p01",
+          "question": "Does a structured layer improve professional suitability?",
+          "favoring": {
+            "occasion": "conservative client meeting",
+            "expected_winner": "B",
+            "winner": "B",
+            "passed": true,
+            "ranked": [
+              {
+                "rank": 1,
+                "items": [
+                  "t1",
+                  "b1",
+                  "l1"
+                ],
+                "reasoning": "The structured blazer adds coverage and polish, making the tank top and tailored trousers suitable for a conservative client meeting."
+              },
+              {
+                "rank": 2,
+                "items": [
+                  "t1",
+                  "b1"
+                ],
+                "reasoning": "The tailored trousers provide structure, but the tank top lacks coverage, making it less formal for a conservative client meeting."
+              },
+              {
+                "rank": 3,
+                "items": [
+                  "t1",
+                  "b1"
+                ],
+                "reasoning": "The tailored trousers provide structure, but the tank top lacks coverage, making it less formal for a conservative client meeting."
+              },
+              {
+                "rank": 4,
+                "items": [
+                  "t1",
+                  "b1"
+                ],
+                "reasoning": "The tailored trousers provide structure, but the tank top lacks coverage, making it less formal for a conservative client meeting."
+              },
+              {
+                "rank": 5,
+                "items": [
+                  "t1",
+                  "b1"
+                ],
+                "reasoning": "The tailored trousers provide structure, but the tank top lacks coverage, making it less formal for a conservative client meeting."
+              }
+            ]
+          },
+          "reversal": {
+            "occasion": "casual outdoor summer gathering",
+            "note": "B should not automatically win here (recorded, not asserted)",
+            "winner": "A",
+            "ranked": [
+              {
+                "rank": 1,
+                "items": [
+                  "t1",
+                  "b1"
+                ],
+                "reasoning": "The black scoop-neck tank provides breathable summer comfort, while the black tailored trousers add a polished touch that elevates the casual vibe."
+              },
+              {
+                "rank": 2,
+                "items": [
+                  "t1",
+                  "b1",
+                  "l1"
+                ],
+                "reasoning": "The black scoop-neck tank offers breathable summer comfort, the black tailored trousers add structure, and the black structured blazer further elevates the look to a smart\u2011casual level."
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "p02",
+      "question": "Does clean denim read as more suitable than relaxed denim for a polished-casual context?",
+      "favoring_wins": 1,
+      "repeats": 1,
+      "runs": [
+        {
+          "id": "p02",
+          "question": "Does clean denim read as more suitable than relaxed denim for a polished-casual context?",
+          "favoring": {
+            "occasion": "business casual Friday at the office",
+            "expected_winner": "B",
+            "winner": "B",
+            "passed": true,
+            "ranked": [
+              {
+                "rank": 1,
+                "items": [
+                  "t2",
+                  "b2"
+                ],
+                "reasoning": "The silk blouse adds polish while the dark wash straight-leg jeans keep the look business casual and office-appropriate."
+              },
+              {
+                "rank": 2,
+                "items": [
+                  "t2",
+                  "b5"
+                ],
+                "reasoning": "The silk blouse provides a professional touch, but the relaxed denim lowers the overall formality, making it less suitable for a business casual Friday."
+              }
+            ]
+          },
+          "reversal": {
+            "occasion": "running errands and grabbing coffee",
+            "note": "B should not automatically win here (recorded, not asserted)",
+            "winner": "B",
+            "ranked": [
+              {
+                "rank": 1,
+                "items": [
+                  "t2",
+                  "b2"
+                ],
+                "reasoning": "The silk blouse pairs with dark wash straight\u2011leg jeans for a polished smart\u2011casual look that\u2019s comfortable for errands and coffee."
+              },
+              {
+                "rank": 2,
+                "items": [
+                  "t2",
+                  "b5"
+                ],
+                "reasoning": "The silk blouse with relaxed straight\u2011leg denim offers a relaxed smart\u2011casual vibe suitable for errands and coffee, though slightly less tailored."
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "p03",
+      "question": "Does a soft layer elevate a plain top enough for a daytime social occasion?",
+      "favoring_wins": 0,
+      "repeats": 1,
+      "runs": [
+        {
+          "id": "p03",
+          "question": "Does a soft layer elevate a plain top enough for a daytime social occasion?",
+          "favoring": {
+            "occasion": "museum visit and lunch with a friend",
+            "expected_winner": "B",
+            "winner": "A",
+            "passed": false,
+            "ranked": [
+              {
+                "rank": 1,
+                "items": [
+                  "t3",
+                  "b3"
+                ],
+                "reasoning": "The grey ribbed turtleneck paired with the grey pleated midi skirt creates a polished smart\u2011casual look suitable for a museum visit and lunch."
+              },
+              {
+                "rank": 2,
+                "items": [
+                  "t3",
+                  "b3",
+                  "l2"
+                ],
+                "reasoning": "Adding the beige knit cardigan layers the grey ribbed turtleneck and grey pleated midi skirt, enhancing warmth and polish for a daytime social event."
+              }
+            ]
+          },
+          "reversal": {
+            "occasion": "nightclub with friends",
+            "note": "B should not automatically win here (recorded, not asserted)",
+            "winner": "A",
+            "ranked": [
+              {
+                "rank": 1,
+                "items": [
+                  "t3",
+                  "b3"
+                ],
+                "reasoning": "The grey ribbed turtleneck paired with the grey pleated midi skirt offers a sleek, monochrome look that balances sophistication with a relaxed vibe suitable for a nightclub with friends."
+              },
+              {
+                "rank": 2,
+                "items": [
+                  "t3",
+                  "b3",
+                  "l2"
+                ],
+                "reasoning": "Adding the beige knit cardigan softens the monochrome palette, creating a laid\u2011back yet cohesive ensemble that still feels appropriate for a casual nightclub setting."
+              }
+            ]
+          }
+        }
+      ]
+    }
+  ],
+  "errors": [
+    {
+      "suite": "golden",
+      "repeat": 0,
+      "error": "APIStatusError(\"Error code: 413 - {'error': {'message': 'Request too large for model `openai/gpt-oss-20b` in organization `org_01kp2jbyrsfsx9f17gk0k8yhns` service tier `on_demand` on tokens per minute (TPM): Limit 8000, Requested 8175, please reduce your message size and try again. Need more tokens? Upgrade to Dev Tier today at https://console.groq.com/settings/billing', 'type': 'tokens', 'code': 'rate_limit_exceeded'}}\")"
+    }
+  ]
+}
