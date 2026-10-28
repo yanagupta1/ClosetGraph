@@ -102,10 +102,24 @@ Open follow-ups (not blocking Stage 2): automate the rubric judge across all beh
 
 ## Stage 3: Tool Context
 
-- [ ] Weather context added through a free source or user-provided input.
-- [ ] Supervisor routing decides when weather is relevant.
-- [ ] Browser or web lookup path designed for later research use.
-- [ ] Tool failures degrade gracefully.
+Foundation and evaluation hardening (done):
+
+- [x] Right-sized stylist tokens to clear the free-tier per-minute cap: lowered max_completion_tokens to 4096 and replaced verbose JSON candidates with compact lines (prompt ~3042 -> ~1905 tokens).
+- [x] Added an `accessory` category; recategorised the scarf; added weather garments (sweater l5, hoodie l6).
+- [x] Bounded candidate pool that stays small as the wardrobe grows: ~16 sampled base outfits plus deterministic accessory variants, capped at 20 (closetgraph/candidates.py).
+- [x] Removed the seed-hunted sampling (seed tuned to force golden combos); seed is now arbitrary and reproducibility-only.
+- [x] Eval harness marks checks "inapplicable" when the model was never offered the chance, distinguishing missing_item from missing_combination (items present does not mean the outfit exists).
+- [x] Two-level eval coverage report (overall + per-category): inapplicable excluded from pass rate; applicable-coverage surfaces when bounding the pool reduces what the suite actually tests.
+
+Weather (in progress):
+
+- [ ] Weather context added through a free source or user-provided input (Open-Meteo, keyless, via stdlib urllib; plus user-provided override).
+- [ ] Optional weather inputs (temperature, condition) threaded through graph state and the eval harness, not just occasion.
+- [ ] Supervisor routing decides when weather is relevant (hybrid: keyword fast-path, LLM router fallback for uncovered cases).
+- [ ] Conditional weather RAG: index weather.md as its own category, retrieve it only when weather is relevant; revise the guide to general principles, not hardcoded rules.
+- [ ] Tool failures degrade gracefully (no fabricated weather; proceed without it and say so).
+- [ ] Weather evals: extend the pairwise harness for weather context-reversal (same occasion and wardrobe, different weather), plus ~5-6 golden weather cases (sunny, dry, rainy, windy, cold, no-weather).
+- [ ] Browser or web lookup path designed for later research use (design only, not built).
 - [ ] Shopping kept out of the main recommendation loop unless used later for wardrobe gap analysis.
 
 **Done when:** weather can visibly change an outfit ranking without breaking the owned-wardrobe constraint.
