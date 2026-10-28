@@ -36,34 +36,73 @@ def _best_rank_containing(ranked, item_id):
     return min(ranks) if ranks else None
 
 
-def _check_hard_checks(hard_checks, ranked):
-    """Return a failure reason string, or None if every hard check passes."""
+def _pool_items(candidates):
+    items = set()
+    for candidate in candidates:
+        items.update(candidate.items)
+    return items
+
+
+def _combo_in_pool(ids, candidates):
+    needed = set(ids)
+    return any(needed.issubset(set(candidate.items)) for candidate in candidates)
+
+
+def _evaluate_check(hard_checks, ranked, candidates):
+    """
+    Evaluate an entry's hard_checks against the ranked output AND the candidate
+    pool. Returns (status, reason, kind):
+      - status: "pass" | "fail" | "inapplicable"
+      - reason: human-readable explanation (None on pass)
+      - kind: for inapplicable, "missing_item" or "missing_combination"; else None
+
+    A check is inapplicable when the model was never given the chance: an item it
+    references is in no candidate (missing_item), or the items all exist in the
+    pool individually but never together in one candidate outfit
+    (missing_combination). Inapplicable results are kept out of the pass rate so
+    bounding the candidate pool does not silently look like failures - or passes.
+    """
+    pool = _pool_items(candidates)
     for key, value in hard_checks.items():
         if key == "top_rank_excludes":
+            # Always applicable: this asserts the top pick omits certain items.
             present = [i for i in value if i in _top_items(ranked)]
             if present:
-                return f"top-ranked outfit should exclude {present}"
-        elif key == "combination_appears_ranked":
-            needed = set(value)
-            if not any(needed.issubset(set(outfit.items)) for outfit in ranked):
-                return f"no ranked outfit contains the combination {value}"
-        elif key == "combination_not_top_rank":
-            if set(value).issubset(_top_items(ranked)):
-                return f"combination {value} should not be the top-ranked outfit"
+                return "fail", f"top-ranked outfit should exclude {present}", None
+        elif key in ("combination_appears_ranked", "combination_not_top_rank"):
+            missing = [i for i in value if i not in pool]
+            if missing:
+                return "inapplicable", f"item(s) not in candidate pool: {missing}", "missing_item"
+            if not _combo_in_pool(value, candidates):
+                return (
+                    "inapplicable",
+                    f"items present but no candidate outfit contains the combination {value}",
+                    "missing_combination",
+                )
+            if key == "combination_appears_ranked":
+                if not any(set(value).issubset(set(o.items)) for o in ranked):
+                    return "fail", f"no ranked outfit contains the combination {value}", None
+            else:
+                if set(value).issubset(_top_items(ranked)):
+                    return "fail", f"combination {value} should not be the top-ranked outfit", None
         elif key == "prefers_over":
+            missing = [i for i in (value["higher"], value["lower"]) if i not in pool]
+            if missing:
+                return "inapplicable", f"item(s) not in candidate pool: {missing}", "missing_item"
             higher = _best_rank_containing(ranked, value["higher"])
             lower = _best_rank_containing(ranked, value["lower"])
             if higher is None:
-                return f"preferred item {value['higher']} does not appear in any ranked outfit"
+                return "fail", f"preferred item {value['higher']} does not appear in any ranked outfit", None
             if lower is not None and not (higher < lower):
-                return f"{value['higher']} should rank above {value['lower']} (ranks {higher} vs {lower})"
+                return "fail", f"{value['higher']} should rank above {value['lower']} (ranks {higher} vs {lower})", None
         elif key == "reasoning_flags_gap":
+            # Always applicable: this inspects the reasoning text.
             text = " ".join(outfit.reasoning.lower() for outfit in ranked)
             if value and not any(keyword in text for keyword in GAP_KEYWORDS):
-                return "reasoning did not flag a wardrobe gap"
+                return "fail", "reasoning did not flag a wardrobe gap", None
         else:
-            return f"unknown hard_check: {key}"
-    return None
+            return "fail", f"unknown hard_check: {key}", None
+    return "pass", None, None
 
 
 def run_golden_set(golden_set_path, wardrobe_path, delay_seconds: float = 0) -> dict:
@@ -79,9 +118,15 @@ def run_golden_set(golden_set_path, wardrobe_path, delay_seconds: float = 0) -> 
     Hard constraints (ownership, one top + one bottom, no duplicates) are always
     enforced on every ranked output via validity.py and reported separately.
 
-    Returns {passed, failed, behavioral_pending, constraint_violations}. Prints
-    a summary: X/Y ranking checks passed, N behavioral collected, C with
-    structural violations.
+    A ranking check is "inapplicable" when the model was never given the chance
+    (an item or the required combination was not in the candidate pool). These
+    are kept OUT of the pass rate, and applicable-coverage (applicable / total
+    ranking checks) is reported so that bounding the candidate pool shows up as
+    an evaluation-coverage problem even when nothing fails.
+
+    Returns {passed, failed, inapplicable, behavioral_pending,
+    constraint_violations, coverage}. Prints a two-level summary (overall, then
+    per category).
     """
     with open(golden_set_path, encoding="utf-8") as handle:
         entries = yaml.safe_load(handle)
@@ -91,8 +136,11 @@ def run_golden_set(golden_set_path, wardrobe_path, delay_seconds: float = 0) -> 
     graph = build_graph()
     passed: list[str] = []
     failed: list[dict] = []
+    inapplicable: list[dict] = []
     behavioral_pending: list[dict] = []
     constraint_violations: list[dict] = []
+    # per-category tallies for ranking checks: {cat: {passed, failed, inapplicable}}
+    by_category: dict[str, dict[str, int]] = {}
 
     for index, entry in enumerate(entries):
         if delay_seconds and index:
@@ -106,6 +154,7 @@ def run_golden_set(golden_set_path, wardrobe_path, delay_seconds: float = 0) -> 
             }
         )
         ranked = result["ranked_outfits"]
+        candidates = result["candidate_outfits"]
 
         # Hard constraints: structural validity on every output, regardless of type.
         violations = validate_ranked_outfits(ranked, wardrobe)
@@ -140,26 +189,63 @@ def run_golden_set(golden_set_path, wardrobe_path, delay_seconds: float = 0) -> 
             behavioral_pending.append(record)
             continue
 
-        reason = _check_hard_checks(entry["hard_checks"], ranked)
-        if reason is None:
+        status, reason, kind = _evaluate_check(entry["hard_checks"], ranked, candidates)
+        category = entry.get("category", "uncategorized")
+        tally = by_category.setdefault(
+            category, {"passed": 0, "failed": 0, "inapplicable": 0}
+        )
+        if status == "pass":
             passed.append(entry["id"])
-        else:
+            tally["passed"] += 1
+        elif status == "fail":
             failed.append({"id": entry["id"], "reason": reason})
+            tally["failed"] += 1
+        else:
+            inapplicable.append({"id": entry["id"], "kind": kind, "reason": reason})
+            tally["inapplicable"] += 1
 
-    ranking_total = len(passed) + len(failed)
+    # Coverage: pass rate is over APPLICABLE checks only; applicable-coverage
+    # exposes how much of the ranking suite actually ran against the bounded pool.
+    applicable = len(passed) + len(failed)
+    ranking_total = applicable + len(inapplicable)
+    coverage = {
+        "ranking_total": ranking_total,
+        "applicable": applicable,
+        "inapplicable": len(inapplicable),
+        "passed": len(passed),
+        "failed": len(failed),
+        "pass_rate_applicable": (len(passed) / applicable) if applicable else None,
+        "applicable_coverage": (applicable / ranking_total) if ranking_total else None,
+        "by_category": by_category,
+    }
+
     judged = [b for b in behavioral_pending if "verdict" in b]
     judged_passed = sum(1 for b in judged if b["verdict"]["passed"])
+    pass_rate = f"{coverage['pass_rate_applicable']:.0%}" if applicable else "n/a"
+    cov = f"{coverage['applicable_coverage']:.0%}" if ranking_total else "n/a"
+    print("Ranking checks (inapplicable excluded from pass rate):")
     print(
-        f"{len(passed)}/{ranking_total} ranking checks passed, "
-        f"{len(behavioral_pending)} behavioral collected "
-        f"({judged_passed}/{len(judged)} rubric-judged passed), "
-        f"{len(constraint_violations)} with structural violations"
+        f"  overall: {len(passed)}/{applicable} applicable passed ({pass_rate}); "
+        f"{len(inapplicable)} inapplicable; coverage {applicable}/{ranking_total} ({cov})"
+    )
+    for category in sorted(by_category):
+        t = by_category[category]
+        app = t["passed"] + t["failed"]
+        total = app + t["inapplicable"]
+        note = f" [{t['inapplicable']} inapplicable]" if t["inapplicable"] else ""
+        print(f"  {category}: {t['passed']}/{app} passed, coverage {app}/{total}{note}")
+    print(
+        f"Behavioral: {len(behavioral_pending)} collected "
+        f"({judged_passed}/{len(judged)} rubric-judged passed). "
+        f"Structural violations: {len(constraint_violations)}."
     )
     return {
         "passed": passed,
         "failed": failed,
+        "inapplicable": inapplicable,
         "behavioral_pending": behavioral_pending,
         "constraint_violations": constraint_violations,
+        "coverage": coverage,
     }
 
 

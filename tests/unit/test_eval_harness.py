@@ -3,15 +3,23 @@ import json
 import yaml
 
 import closetgraph.eval_harness as eval_harness
-from closetgraph.models import RankedOutfit
+from closetgraph.models import OutfitCandidate, RankedOutfit
 
 
 class FakeGraph:
-    def __init__(self, rankings_by_occasion):
+    def __init__(self, rankings_by_occasion, candidates_by_occasion=None):
         self.rankings_by_occasion = rankings_by_occasion
+        self.candidates_by_occasion = candidates_by_occasion or {}
 
     def invoke(self, state):
-        state["ranked_outfits"] = self.rankings_by_occasion[state["occasion"]]
+        occasion = state["occasion"]
+        ranked = self.rankings_by_occasion[occasion]
+        state["ranked_outfits"] = ranked
+        # Default the candidate pool to the ranked outfits so checks are
+        # applicable unless a test specifies a narrower pool.
+        state["candidate_outfits"] = self.candidates_by_occasion.get(
+            occasion, [OutfitCandidate(items=o.items) for o in ranked]
+        )
         return state
 
 
@@ -89,6 +97,59 @@ def test_run_golden_set_passes_fails_and_collects_judged(tmp_path, monkeypatch):
     assert e3["top_outfit"] == ["t1", "b5"]
     # all outputs structurally valid (one top + one bottom) -> no violations
     assert result["constraint_violations"] == []
+    # coverage: both ranking checks applicable, pass rate over applicable only
+    cov = result["coverage"]
+    assert cov["applicable"] == 2
+    assert cov["inapplicable"] == 0
+    assert cov["pass_rate_applicable"] == 0.5
+    assert cov["applicable_coverage"] == 1.0
+
+
+def test_run_golden_set_marks_inapplicable_missing_item_vs_combination(tmp_path, monkeypatch):
+    entries = [
+        {   # references b5, which is NOT in the candidate pool -> missing_item
+            "id": "mi",
+            "category": "garment_denim",
+            "type": "ranking_preference",
+            "occasion": "brunch",
+            "hard_checks": {"prefers_over": {"higher": "b1", "lower": "b5"}},
+        },
+        {   # t1 and b1 are both in the pool, but never together in one outfit
+            "id": "mc",
+            "category": "layering_elevation",
+            "type": "ranking_preference",
+            "occasion": "office",
+            "hard_checks": {"combination_appears_ranked": ["t1", "b1"]},
+        },
+    ]
+    golden_path, wardrobe_path = _write_inputs(tmp_path, entries)
+
+    rankings = {
+        "brunch": [RankedOutfit(items=["t1", "b1"], rank=1, reasoning="x")],
+        "office": [RankedOutfit(items=["t1", "b1"], rank=1, reasoning="x")],
+    }
+    candidates = {
+        # pool has b1 but no b5 at all
+        "brunch": [OutfitCandidate(items=["t1", "b1"])],
+        # pool has t1 and b1 as items, but never in the same outfit
+        "office": [OutfitCandidate(items=["t1"]), OutfitCandidate(items=["b1"])],
+    }
+    monkeypatch.setattr(
+        eval_harness, "build_graph", lambda: FakeGraph(rankings, candidates)
+    )
+
+    result = eval_harness.run_golden_set(str(golden_path), str(wardrobe_path))
+
+    assert result["passed"] == []
+    assert result["failed"] == []
+    kinds = {i["id"]: i["kind"] for i in result["inapplicable"]}
+    assert kinds == {"mi": "missing_item", "mc": "missing_combination"}
+    # nothing applicable -> coverage 0, pass rate undefined
+    cov = result["coverage"]
+    assert cov["applicable"] == 0
+    assert cov["inapplicable"] == 2
+    assert cov["applicable_coverage"] == 0.0
+    assert cov["pass_rate_applicable"] is None
 
 
 def test_run_pairwise_case_asserts_favoring_and_records_reversal(monkeypatch, sample_wardrobe):
