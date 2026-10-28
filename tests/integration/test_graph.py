@@ -1,5 +1,44 @@
-from closetgraph.graph import build_graph
-from closetgraph.models import RankedOutfit
+from closetgraph.graph import build_graph, weather_lookup_node
+from closetgraph.models import RankedOutfit, WeatherInput
+
+
+def test_weather_lookup_node_resolves_user_weather_without_api(monkeypatch):
+    # User-provided weather resolves without any fetch call.
+    monkeypatch.setattr(
+        "closetgraph.graph.fetch_open_meteo",
+        lambda location: (_ for _ in ()).throw(AssertionError("no API expected")),
+    )
+    state = {"weather_input": WeatherInput(temperature_c=5, condition="rainy")}
+
+    out = weather_lookup_node(state)
+
+    assert out["weather_context"].source == "user"
+    assert out["weather_context"].condition == "rainy"
+    assert out["weather_error"] is None
+
+
+def test_weather_lookup_node_no_input_is_noop(monkeypatch):
+    monkeypatch.setattr(
+        "closetgraph.graph.fetch_open_meteo",
+        lambda location: (_ for _ in ()).throw(AssertionError("no API expected")),
+    )
+
+    out = weather_lookup_node({"weather_input": None})
+
+    assert out["weather_context"] is None
+    assert out["weather_error"] is None
+
+
+def test_weather_lookup_node_surfaces_fetch_error(monkeypatch):
+    def boom(location):
+        raise OSError("network down")
+
+    monkeypatch.setattr("closetgraph.graph.fetch_open_meteo", boom)
+
+    out = weather_lookup_node({"weather_input": WeatherInput(location="Paris")})
+
+    assert out["weather_context"] is None  # no fabrication
+    assert "network down" in out["weather_error"]
 
 
 def test_graph_generates_candidates_and_ranked_outfits(monkeypatch, sample_wardrobe):
