@@ -10,8 +10,10 @@ class FakeGraph:
     def __init__(self, rankings_by_occasion, candidates_by_occasion=None):
         self.rankings_by_occasion = rankings_by_occasion
         self.candidates_by_occasion = candidates_by_occasion or {}
+        self.seen_states = []
 
     def invoke(self, state):
+        self.seen_states.append(dict(state))
         occasion = state["occasion"]
         ranked = self.rankings_by_occasion[occasion]
         state["ranked_outfits"] = ranked
@@ -103,6 +105,40 @@ def test_run_golden_set_passes_fails_and_collects_judged(tmp_path, monkeypatch):
     assert cov["inapplicable"] == 0
     assert cov["pass_rate_applicable"] == 0.5
     assert cov["applicable_coverage"] == 1.0
+
+
+def test_run_golden_set_injects_fixture_weather_without_api(tmp_path, monkeypatch):
+    entries = [
+        {   # carries fixed weather -> must reach the graph state, no API call
+            "id": "w1",
+            "category": "occasion_mapping",
+            "type": "ranking_preference",
+            "occasion": "patio dinner",
+            "hard_checks": {"top_rank_excludes": ["b5"]},
+            "weather": {"temperature_c": 6, "condition": "rainy"},
+        },
+        {   # no weather block -> weather_input stays None (Stage 2 behaviour)
+            "id": "w2",
+            "category": "occasion_mapping",
+            "type": "ranking_preference",
+            "occasion": "office",
+            "hard_checks": {"top_rank_excludes": ["b5"]},
+        },
+    ]
+    golden_path, wardrobe_path = _write_inputs(tmp_path, entries)
+    rankings = {
+        "patio dinner": [RankedOutfit(items=["t1", "b1"], rank=1, reasoning="x")],
+        "office": [RankedOutfit(items=["t1", "b1"], rank=1, reasoning="x")],
+    }
+    fake = FakeGraph(rankings)
+    monkeypatch.setattr(eval_harness, "build_graph", lambda: fake)
+
+    eval_harness.run_golden_set(str(golden_path), str(wardrobe_path))
+
+    by_occasion = {s["occasion"]: s["weather_input"] for s in fake.seen_states}
+    assert by_occasion["patio dinner"].temperature_c == 6
+    assert by_occasion["patio dinner"].condition == "rainy"
+    assert by_occasion["office"] is None
 
 
 def test_run_golden_set_marks_inapplicable_missing_item_vs_combination(tmp_path, monkeypatch):

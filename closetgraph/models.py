@@ -18,10 +18,34 @@ class RankedOutfit(BaseModel):
     reasoning: str
 
 
+class WeatherInput(BaseModel):
+    """Weather the user explicitly supplied with a request. All optional, so a
+    request can carry no weather at all (Stage 2 behaviour), an explicit
+    temperature/condition, or just a location to look up."""
+
+    temperature_c: float | None = None
+    condition: str | None = None  # free text, e.g. "rainy", "windy", "hot and humid"
+    location: str | None = None  # used only to look weather up when not given directly
+
+
+class WeatherContext(BaseModel):
+    """Weather actually resolved and used downstream, with provenance so the
+    source (user-provided vs fetched) is always clear."""
+
+    temperature_c: float | None = None
+    condition: str | None = None
+    source: Literal["user", "open-meteo"]
+
+
 class ClosetGraphState(TypedDict):
     wardrobe: list[WardrobeItem]
     occasion: str
     candidate_outfits: list[OutfitCandidate]
     ranked_outfits: list[RankedOutfit]
     retrieved_guidance: list[str]  # style-guide chunks
+    # Stage 3 weather (all optional; omitted keys keep Stage 2 requests working):
+    weather_input: WeatherInput | None  # explicit user request, if any
+    weather_context: WeatherContext | None  # resolved weather actually used, or None
+    weather_relevant: bool  # whether the occasion/request warrants weather
+    weather_error: str | None  # set when a lookup failed, so the failure is observable
 

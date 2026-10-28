@@ -5,10 +5,24 @@ import yaml
 
 from closetgraph.graph import build_graph
 from closetgraph.judge import judge_outfit
-from closetgraph.models import OutfitCandidate, WardrobeItem
+from closetgraph.models import OutfitCandidate, WardrobeItem, WeatherInput
 from closetgraph.retrieval import retrieve_style_guidance
 from closetgraph.stylist import rank_outfits
 from closetgraph.validity import validate_ranked_outfits
+
+
+def _weather_input_from_entry(entry):
+    """Build a WeatherInput from an eval fixture's optional `weather` block, so
+    fixed weather can be injected into a run without any external API call.
+    Returns None when the entry carries no weather (Stage 2 behaviour)."""
+    weather = entry.get("weather")
+    if not weather:
+        return None
+    return WeatherInput(
+        temperature_c=weather.get("temperature_c"),
+        condition=weather.get("condition"),
+        location=weather.get("location"),
+    )
 
 # Heuristic keywords for the reasoning_flags_gap hard check (pure code, no LLM).
 GAP_KEYWORDS = (
@@ -151,6 +165,8 @@ def run_golden_set(golden_set_path, wardrobe_path, delay_seconds: float = 0) -> 
                 "occasion": entry["occasion"],
                 "candidate_outfits": [],
                 "ranked_outfits": [],
+                # Fixed weather from the fixture, if any (no external API call).
+                "weather_input": _weather_input_from_entry(entry),
             }
         )
         ranked = result["ranked_outfits"]
