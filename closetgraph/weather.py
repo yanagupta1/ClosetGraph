@@ -105,57 +105,62 @@ def resolve_weather(weather_input: WeatherInput | None, fetcher=None):
     """
     Resolve weather for a request, returning (context, error):
 
-      - context: a WeatherContext when weather was resolved, else None.
+      - context: a WeatherContext when any field was resolved, else None.
       - error:   a short string when a lookup was attempted and failed, else None.
 
-    Rules:
-      - No input, or an input with nothing usable -> (None, None). Not an error;
-        the request simply carries no weather (Stage 2 behaviour).
-      - Explicit user temperature/condition takes precedence over any lookup and
-        is tagged source="user". The fetcher is not called in that case.
-      - Location-only + a fetcher -> attempt the lookup, tagged
-        source="open-meteo". On failure we DO NOT fabricate weather: return
-        (None, "<reason>") and log it, so the failure is observable.
+    Per-field merge, not all-or-nothing:
+      - No input, or nothing usable -> (None, None). Not an error; the request
+        simply carries no weather (Stage 2 behaviour).
+      - User-provided fields always win and are tagged "user". The fetcher is
+        only consulted to fill fields the user left out (and only when a
+        location is available), so e.g. "3C in NYC, no condition" keeps the
+        user's temperature and fetches just the condition.
+      - A lookup is only attempted when a field is missing AND a location is
+        given. On failure we never fabricate: any user-provided fields are kept,
+        the missing ones stay None, and the failure is surfaced via error.
     """
     if weather_input is None:
         return None, None
 
-    # User-provided explicit weather wins over any lookup.
-    if weather_input.temperature_c is not None or weather_input.condition is not None:
-        return (
-            WeatherContext(
-                temperature_c=weather_input.temperature_c,
-                condition=weather_input.condition,
-                source="user",
-            ),
-            None,
-        )
+    temperature_c = weather_input.temperature_c
+    condition = weather_input.condition
+    sources: dict[str, str] = {}
+    if temperature_c is not None:
+        sources["temperature_c"] = "user"
+    if condition is not None:
+        sources["condition"] = "user"
 
-    # Only a location given: look it up if we have a fetcher.
-    if weather_input.location and fetcher is not None:
-        try:
-            fetched = fetcher(weather_input.location)
-        except Exception as error:  # never fabricate weather on failure
-            message = f"weather lookup failed for {weather_input.location!r}: {error!r}"
-            logger.warning(message)
-            return None, message
-        if not fetched:
-            message = f"weather lookup returned nothing for {weather_input.location!r}"
-            logger.warning(message)
-            return None, message
-        return (
-            WeatherContext(
-                temperature_c=fetched.get("temperature_c"),
-                condition=fetched.get("condition"),
-                source="open-meteo",
-            ),
-            None,
-        )
+    error = None
+    missing = temperature_c is None or condition is None
+    if missing and weather_input.location:
+        if fetcher is None:
+            error = f"no weather fetcher available to resolve {weather_input.location!r}"
+            logger.warning(error)
+        else:
+            try:
+                fetched = fetcher(weather_input.location)
+            except Exception as exc:  # never fabricate weather on failure
+                error = f"weather lookup failed for {weather_input.location!r}: {exc!r}"
+                logger.warning(error)
+                fetched = None
+            if fetched is None and error is None:
+                error = f"weather lookup returned nothing for {weather_input.location!r}"
+                logger.warning(error)
+            if fetched:
+                # Fill only gaps; user-provided fields are never overwritten.
+                if temperature_c is None and fetched.get("temperature_c") is not None:
+                    temperature_c = fetched["temperature_c"]
+                    sources["temperature_c"] = "open-meteo"
+                if condition is None and fetched.get("condition") is not None:
+                    condition = fetched["condition"]
+                    sources["condition"] = "open-meteo"
 
-    # Location given but no fetcher available (e.g. lookup not wired yet).
-    if weather_input.location:
-        message = f"no weather fetcher available to resolve {weather_input.location!r}"
-        logger.warning(message)
-        return None, message
+    if temperature_c is None and condition is None:
+        return None, error
 
-    return None, None
+    return (
+        WeatherContext(
+            temperature_c=temperature_c, condition=condition, sources=sources
+        ),
+        error,
+    )

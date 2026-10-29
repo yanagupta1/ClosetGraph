@@ -29,12 +29,14 @@ class WeatherInput(BaseModel):
 
 
 class WeatherContext(BaseModel):
-    """Weather actually resolved and used downstream, with provenance so the
-    source (user-provided vs fetched) is always clear."""
+    """Weather actually resolved and used downstream. Provenance is per-field so
+    a context can be part user-provided and part fetched: `sources` maps each
+    resolved field name ("temperature_c", "condition") to "user" or
+    "open-meteo"."""
 
     temperature_c: float | None = None
     condition: str | None = None
-    source: Literal["user", "open-meteo"]
+    sources: dict[str, str]
 
 
 class ClosetGraphState(TypedDict):

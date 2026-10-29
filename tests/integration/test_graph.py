@@ -12,7 +12,10 @@ def test_weather_lookup_node_resolves_user_weather_without_api(monkeypatch):
 
     out = weather_lookup_node(state)
 
-    assert out["weather_context"].source == "user"
+    assert out["weather_context"].sources == {
+        "temperature_c": "user",
+        "condition": "user",
+    }
     assert out["weather_context"].condition == "rainy"
     assert out["weather_error"] is None
 
