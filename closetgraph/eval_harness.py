@@ -5,7 +5,12 @@ import yaml
 
 from closetgraph.graph import build_graph
 from closetgraph.judge import judge_outfit
-from closetgraph.models import OutfitCandidate, WardrobeItem, WeatherInput
+from closetgraph.models import (
+    OutfitCandidate,
+    WardrobeItem,
+    WeatherContext,
+    WeatherInput,
+)
 from closetgraph.retrieval import retrieve_style_guidance
 from closetgraph.stylist import rank_outfits
 from closetgraph.validity import validate_ranked_outfits
@@ -265,30 +270,84 @@ def run_golden_set(golden_set_path, wardrobe_path, delay_seconds: float = 0) -> 
     }
 
 
-def compare_pairwise(outfit_a, outfit_b, occasion, wardrobe, retrieved_guidance=None):
-    """
-    Compare the suitability of two specific outfits for one occasion by asking
-    the stylist to rank ONLY those two. This measures A-vs-B suitability
-    directly; it does not touch the main 20-candidate top 5.
+# Distinctive garment-type words used to check that an outfit's reasoning does
+# not reference a garment the outfit does not contain (the g23 failure mode).
+_GARMENT_WORDS = (
+    "blazer",
+    "cardigan",
+    "trench",
+    "coat",
+    "rain jacket",
+    "jacket",
+    "scarf",
+    "hoodie",
+    "sweater",
+    "turtleneck",
+    "blouse",
+    "tank",
+    "tee",
+    "shirt",
+    "trousers",
+    "jeans",
+    "denim",
+    "skirt",
+)
 
-    Returns {"winner": "A"|"B"|None, "ranked": [...]}. winner is whichever
-    outfit the stylist ranks first; None if the ranking matches neither (e.g.
-    the model returned unexpected ids).
+
+def check_reasoning_garments(outfit_items, reasoning, wardrobe):
+    """
+    Return garment words mentioned in the reasoning that are NOT present in the
+    recommended outfit but DO exist elsewhere in the wardrobe - i.e. the model
+    talked about a garment it did not actually pick. Empty list means consistent.
+    """
+    by_id = {item.id: item.name.lower() for item in wardrobe}
+    outfit_text = " ".join(by_id.get(i, "") for i in outfit_items)
+    wardrobe_text = " ".join(by_id.values())
+    text = (reasoning or "").lower()
+
+    offenders = []
+    for word in _GARMENT_WORDS:
+        if word in text and word not in outfit_text and word in wardrobe_text:
+            offenders.append(word)
+    return offenders
+
+
+def compare_pairwise(
+    outfit_a, outfit_b, occasion, wardrobe, retrieved_guidance=None, weather_context=None
+):
+    """
+    Compare the suitability of two specific outfits for one occasion (and optional
+    weather) by asking the stylist to rank ONLY those two. This measures A-vs-B
+    suitability directly; it does not touch the main 20-candidate top 5.
+
+    When weather_context is given it is passed to both retrieval and the stylist,
+    so a weather eval can hold the outfits and occasion fixed and vary only the
+    weather. Returns {"winner", "ranked", "reasoning_offenders"} - offenders are
+    garments named in the winning outfit's reasoning but not actually in it.
     """
     candidates = [OutfitCandidate(items=outfit_a), OutfitCandidate(items=outfit_b)]
     if retrieved_guidance is None:
-        retrieved_guidance = retrieve_style_guidance(occasion)
-    ranked = rank_outfits(candidates, wardrobe, occasion, retrieved_guidance)
+        retrieved_guidance = retrieve_style_guidance(
+            occasion, weather_context=weather_context
+        )
+    ranked = rank_outfits(
+        candidates, wardrobe, occasion, retrieved_guidance, weather_context=weather_context
+    )
 
     winner = None
+    offenders = []
     if ranked:
         top = set(ranked[0].items)
         if top == set(outfit_a):
             winner = "A"
         elif top == set(outfit_b):
             winner = "B"
+        offenders = check_reasoning_garments(
+            ranked[0].items, ranked[0].reasoning, wardrobe
+        )
     return {
         "winner": winner,
+        "reasoning_offenders": offenders,
         "ranked": [
             {"rank": o.rank, "items": o.items, "reasoning": o.reasoning}
             for o in ranked
@@ -327,6 +386,92 @@ def run_pairwise_case(case, wardrobe) -> dict:
         }
 
     return result
+
+
+def _weather_context_from_block(block):
+    if not block:
+        return None
+    return WeatherContext(
+        temperature_c=block.get("temperature_c"),
+        condition=block.get("condition"),
+        sources={
+            k: "user"
+            for k in ("temperature_c", "condition")
+            if block.get(k) is not None
+        },
+    )
+
+
+def run_weather_pairwise_case(case, wardrobe) -> dict:
+    """
+    Hold outfits A/B and the occasion FIXED and vary only the weather. Each
+    `conditions` entry supplies a weather block and the expected winner for that
+    weather. Reports ranking success (did the winner match the expectation)
+    SEPARATELY from garment-consistency (did the winning reasoning mention only
+    garments it actually contains) - a flip for the wrong reason is not a pass.
+    """
+    outfit_a = case["outfit_a"]
+    outfit_b = case["outfit_b"]
+    conditions = []
+    for cond in case["conditions"]:
+        weather = _weather_context_from_block(cond.get("weather"))
+        result = compare_pairwise(
+            outfit_a, outfit_b, case["occasion"], wardrobe, weather_context=weather
+        )
+        conditions.append(
+            {
+                "label": cond.get("label"),
+                "weather": cond.get("weather"),
+                "expected_winner": cond.get("expected_winner"),
+                "winner": result["winner"],
+                "ranking_passed": result["winner"] == cond.get("expected_winner"),
+                "reasoning_offenders": result["reasoning_offenders"],
+                "ranked": result["ranked"],
+            }
+        )
+
+    ranking_passed = all(c["ranking_passed"] for c in conditions)
+    consistent = all(not c["reasoning_offenders"] for c in conditions)
+    return {
+        "id": case["id"],
+        "occasion": case["occasion"],
+        "question": case.get("question"),
+        "ranking_passed": ranking_passed,  # did weather move the ranking as expected
+        "garment_consistent": consistent,  # reported separately, not conflated
+        "conditions": conditions,
+    }
+
+
+def run_weather_pairwise_set(
+    pairwise_set_path, wardrobe_path, delay_seconds: float = 0
+) -> list[dict]:
+    """Run all weather pairwise cases, throttling between model calls. Prints a
+    summary that keeps ranking success distinct from garment consistency."""
+    with open(pairwise_set_path, encoding="utf-8") as handle:
+        cases = yaml.safe_load(handle)
+    with open(wardrobe_path, encoding="utf-8") as handle:
+        wardrobe = [WardrobeItem(**item) for item in json.load(handle)]
+
+    results = []
+    first = True
+    for case in cases:
+        # delay between cases; compare_pairwise itself makes one call per condition
+        if delay_seconds and not first:
+            time.sleep(delay_seconds)
+        first = False
+        result = run_weather_pairwise_case(case, wardrobe)
+        results.append(result)
+        print(
+            f"{case['id']}: ranking {'ok' if result['ranking_passed'] else 'FAIL'}, "
+            f"garment-consistent {'ok' if result['garment_consistent'] else 'FAIL'}"
+        )
+    passed = sum(1 for r in results if r["ranking_passed"])
+    consistent = sum(1 for r in results if r["garment_consistent"])
+    print(
+        f"weather pairwise: {passed}/{len(results)} ranking passed, "
+        f"{consistent}/{len(results)} garment-consistent"
+    )
+    return results
 
 
 def run_pairwise_set(

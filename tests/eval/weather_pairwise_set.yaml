@@ -1,0 +1,64 @@
+# Weather pairwise cases (DRAFT - review/edit expectations).
+#
+# Each case holds the two outfits and the occasion FIXED and varies ONLY the
+# weather. For each condition we state the expected winner, so the eval checks
+# that the RANKING moves for a defensible reason - not merely that the reasoning
+# mentions weather. Garment-consistency (reasoning names only garments actually
+# in the outfit) is reported separately. Item ids refer to docs/wardrobe.json.
+#
+# Wardrobe anchors: l3 camel wool trench, l4 black rain jacket, l5 chunky knit
+# sweater, a1 grey wool scarf, l1 black structured blazer.
+
+- id: wp01
+  question: "Cold vs warm: does a warm outer layer win only when it is cold?"
+  outfit_a: [t4, b1]          # navy long-sleeve + tailored trousers (no outer layer)
+  outfit_b: [t4, b1, l3]      # + camel wool trench
+  occasion: "weekend walk around the city"
+  conditions:
+    - label: cold
+      weather: {temperature_c: 2, condition: clear}
+      expected_winner: B       # trench earns its place in the cold
+    - label: warm
+      weather: {temperature_c: 26, condition: clear}
+      expected_winner: A       # trench is overkill when warm
+
+- id: wp02
+  question: "Dry vs rainy: does a rain jacket win only in the rain?"
+  outfit_a: [t7, b2]          # graphic tee + dark jeans
+  outfit_b: [t7, b2, l4]      # + black rain jacket
+  occasion: "casual outdoor market trip"
+  conditions:
+    - label: rainy
+      weather: {temperature_c: 12, condition: rainy}
+      expected_winner: B
+    - label: dry
+      weather: {temperature_c: 12, condition: clear}
+      expected_winner: A
+
+- id: wp03
+  question: "Windy vs calm: is a fitted/secured layer favored in wind?"
+  outfit_a: [t5, b3]          # sleeveless blouse + pleated midi skirt (loose)
+  outfit_b: [t5, b3, l5]      # + chunky knit sweater (more covered/secured)
+  occasion: "afternoon by the waterfront"
+  conditions:
+    - label: windy
+      weather: {temperature_c: 14, condition: windy}
+      expected_winner: B
+    - label: calm
+      weather: {temperature_c: 14, condition: clear}
+      expected_winner: A
+
+- id: wp04
+  question: "Indoor/formal: weather shifts layering but must NOT override dress code."
+  # A is professional; B is warm-but-casual. Even cold must not make the casual
+  # option beat the professional one for a conservative meeting.
+  outfit_a: [t2, b1, l1]      # silk blouse + tailored trousers + blazer (professional)
+  outfit_b: [t7, b2, l6]      # graphic tee + jeans + hoodie (warm but casual)
+  occasion: "first client meeting, conservative office"
+  conditions:
+    - label: cold
+      weather: {temperature_c: 1, condition: cold}
+      expected_winner: A       # dress code holds; warmth does not justify casual
+    - label: mild
+      weather: {temperature_c: 18, condition: clear}
+      expected_winner: A

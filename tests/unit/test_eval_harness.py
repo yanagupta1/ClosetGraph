@@ -190,7 +190,7 @@ def test_run_golden_set_marks_inapplicable_missing_item_vs_combination(tmp_path,
 
 def test_run_pairwise_case_asserts_favoring_and_records_reversal(monkeypatch, sample_wardrobe):
     # Stub the stylist: B (with blazer) wins the client meeting, A wins the picnic.
-    def fake_rank_outfits(candidates, wardrobe, occasion, retrieved_guidance=None):
+    def fake_rank_outfits(candidates, wardrobe, occasion, retrieved_guidance=None, weather_context=None):
         outfit_b = ["t1", "b1", "l1"]
         if "client meeting" in occasion:
             order = [c for c in candidates if c.items == outfit_b] + [
@@ -206,7 +206,7 @@ def test_run_pairwise_case_asserts_favoring_and_records_reversal(monkeypatch, sa
         ]
 
     monkeypatch.setattr(eval_harness, "rank_outfits", fake_rank_outfits)
-    monkeypatch.setattr(eval_harness, "retrieve_style_guidance", lambda occasion: [])
+    monkeypatch.setattr(eval_harness, "retrieve_style_guidance", lambda occasion, weather_context=None: [])
 
     case = {
         "id": "p01",
@@ -227,7 +227,7 @@ def test_run_pairwise_case_asserts_favoring_and_records_reversal(monkeypatch, sa
 
 def test_run_pairwise_set_repeats_and_counts_favoring_wins(tmp_path, monkeypatch):
     # B always wins the favoring occasion -> favoring_wins should equal repeats.
-    def fake_rank_outfits(candidates, wardrobe, occasion, retrieved_guidance=None):
+    def fake_rank_outfits(candidates, wardrobe, occasion, retrieved_guidance=None, weather_context=None):
         outfit_b = ["t1", "b1", "l1"]
         order = [c for c in candidates if c.items == outfit_b] + [
             c for c in candidates if c.items != outfit_b
@@ -238,7 +238,7 @@ def test_run_pairwise_set_repeats_and_counts_favoring_wins(tmp_path, monkeypatch
         ]
 
     monkeypatch.setattr(eval_harness, "rank_outfits", fake_rank_outfits)
-    monkeypatch.setattr(eval_harness, "retrieve_style_guidance", lambda occasion: [])
+    monkeypatch.setattr(eval_harness, "retrieve_style_guidance", lambda occasion, weather_context=None: [])
 
     pairwise_path = tmp_path / "pairwise.yaml"
     pairwise_path.write_text(
@@ -313,3 +313,93 @@ def test_run_golden_set_judges_rubric_color_case(tmp_path, monkeypatch):
     # the judge received resolved garment names, not raw ids
     assert "tank" in captured["outfit"]
     assert captured["rubric"] == "Pass if colours are intentional."
+
+
+# --- weather pairwise (mocked stylist, no Groq) ---
+
+_WX_WARDROBE = [
+    {"id": "t4", "name": "navy fitted long-sleeve top", "category": "top"},
+    {"id": "b1", "name": "black tailored trousers", "category": "bottom"},
+    {"id": "l3", "name": "camel wool trench coat", "category": "layering"},
+    {"id": "l1", "name": "black structured blazer", "category": "layering"},
+]
+
+
+def _wx_wardrobe_items():
+    from closetgraph.models import WardrobeItem
+
+    return [WardrobeItem(**i) for i in _WX_WARDROBE]
+
+
+def test_weather_pairwise_reports_ranking_and_consistency_separately(monkeypatch):
+    # Stylist: the trench (l3) wins when cold, the base outfit wins when warm.
+    def fake_rank_outfits(candidates, wardrobe, occasion, retrieved_guidance=None, weather_context=None):
+        cold = weather_context is not None and (weather_context.temperature_c or 99) < 10
+        with_trench = next(c for c in candidates if "l3" in c.items)
+        without = next(c for c in candidates if "l3" not in c.items)
+        order = [with_trench, without] if cold else [without, with_trench]
+        return [
+            RankedOutfit(items=c.items, rank=i + 1, reasoning="fine")
+            for i, c in enumerate(order)
+        ]
+
+    monkeypatch.setattr(eval_harness, "rank_outfits", fake_rank_outfits)
+    monkeypatch.setattr(eval_harness, "retrieve_style_guidance", lambda occasion, weather_context=None: [])
+
+    case = {
+        "id": "wp01",
+        "outfit_a": ["t4", "b1"],
+        "outfit_b": ["t4", "b1", "l3"],
+        "occasion": "weekend walk",
+        "conditions": [
+            {"label": "cold", "weather": {"temperature_c": 2}, "expected_winner": "B"},
+            {"label": "warm", "weather": {"temperature_c": 26}, "expected_winner": "A"},
+        ],
+    }
+
+    result = eval_harness.run_weather_pairwise_case(case, _wx_wardrobe_items())
+
+    assert result["ranking_passed"] is True  # winner flipped with weather, as expected
+    assert result["garment_consistent"] is True
+    assert [c["winner"] for c in result["conditions"]] == ["B", "A"]
+
+
+def test_weather_pairwise_flags_garment_inconsistency_without_failing_ranking(monkeypatch):
+    # Winner is correct, but the reasoning name-drops a blazer not in the outfit.
+    def fake_rank_outfits(candidates, wardrobe, occasion, retrieved_guidance=None, weather_context=None):
+        with_trench = next(c for c in candidates if "l3" in c.items)
+        without = next(c for c in candidates if "l3" not in c.items)
+        return [
+            RankedOutfit(items=with_trench.items, rank=1, reasoning="the blazer adds polish"),
+            RankedOutfit(items=without.items, rank=2, reasoning="fine"),
+        ]
+
+    monkeypatch.setattr(eval_harness, "rank_outfits", fake_rank_outfits)
+    monkeypatch.setattr(eval_harness, "retrieve_style_guidance", lambda occasion, weather_context=None: [])
+
+    case = {
+        "id": "wp-bad",
+        "outfit_a": ["t4", "b1"],
+        "outfit_b": ["t4", "b1", "l3"],
+        "occasion": "walk",
+        "conditions": [
+            {"label": "cold", "weather": {"temperature_c": 2}, "expected_winner": "B"},
+        ],
+    }
+
+    result = eval_harness.run_weather_pairwise_case(case, _wx_wardrobe_items())
+
+    assert result["ranking_passed"] is True  # ranking is right
+    assert result["garment_consistent"] is False  # but reasoning is not - reported apart
+    assert "blazer" in result["conditions"][0]["reasoning_offenders"]
+
+
+def test_check_reasoning_garments_detects_absent_garment():
+    wardrobe = _wx_wardrobe_items()
+    # outfit has the trench but reasoning mentions a blazer (present in wardrobe,
+    # not in this outfit) -> flagged.
+    offenders = eval_harness.check_reasoning_garments(
+        ["t4", "b1", "l3"], "the blazer and trench look sharp", wardrobe
+    )
+    assert "blazer" in offenders
+    assert "trench" not in offenders  # trench IS in the outfit

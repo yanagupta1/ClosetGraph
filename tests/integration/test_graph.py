@@ -108,3 +108,64 @@ def test_graph_preserves_occasion_through_stylist_node(monkeypatch, sample_wardr
 
     assert seen["occasion"] == "first client meeting, conservative office"
     assert result["ranked_outfits"][0].items == ["t2", "b1", "l1"]
+
+
+def _stub_stylist_and_retrieval(monkeypatch):
+    monkeypatch.setattr(
+        "closetgraph.graph.rank_outfits",
+        lambda c, w, o, rg=None, weather_context=None: [
+            RankedOutfit(items=c[0].items, rank=1, reasoning="ok")
+        ],
+    )
+    monkeypatch.setattr(
+        "closetgraph.graph.retrieve_style_guidance",
+        lambda occasion, weather_context=None: [],
+    )
+
+
+def test_graph_no_weather_regression(monkeypatch, sample_wardrobe):
+    # No weather input: graph runs exactly like Stage 2, weather_context stays None.
+    _stub_stylist_and_retrieval(monkeypatch)
+    monkeypatch.setattr(
+        "closetgraph.graph.fetch_open_meteo",
+        lambda loc: (_ for _ in ()).throw(AssertionError("no API without location")),
+    )
+    graph = build_graph()
+
+    result = graph.invoke(
+        {
+            "wardrobe": sample_wardrobe,
+            "occasion": "casual brunch",
+            "candidate_outfits": [],
+            "ranked_outfits": [],
+        }
+    )
+
+    assert result["weather_context"] is None
+    assert result["weather_error"] is None
+    assert result["ranked_outfits"]  # still produces a ranking
+
+
+def test_graph_weather_fetch_failure_regression(monkeypatch, sample_wardrobe):
+    # Location given but lookup fails: run continues, error surfaced, no fabrication.
+    _stub_stylist_and_retrieval(monkeypatch)
+
+    def boom(location):
+        raise OSError("network down")
+
+    monkeypatch.setattr("closetgraph.graph.fetch_open_meteo", boom)
+    graph = build_graph()
+
+    result = graph.invoke(
+        {
+            "wardrobe": sample_wardrobe,
+            "occasion": "outdoor market",
+            "candidate_outfits": [],
+            "ranked_outfits": [],
+            "weather_input": WeatherInput(location="Nowhere"),
+        }
+    )
+
+    assert result["weather_context"] is None  # not fabricated
+    assert "network down" in result["weather_error"]
+    assert result["ranked_outfits"]  # degrades gracefully, still ranks
