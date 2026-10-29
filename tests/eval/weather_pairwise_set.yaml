@@ -22,30 +22,34 @@
       weather: {temperature_c: 26, condition: clear}
       expected_winner: A       # trench is overkill when warm
 
+# Temperature held WARM in both conditions so it cannot justify the extra layer;
+# only rain varies, isolating the condition (see lesson 9 on confounds).
 - id: wp02
-  question: "Dry vs rainy: does a rain jacket win only in the rain?"
+  question: "Dry vs rainy at the same warm temperature: does a rain jacket win only in the rain?"
   outfit_a: [t7, b2]          # graphic tee + dark jeans
   outfit_b: [t7, b2, l4]      # + black rain jacket
   occasion: "casual outdoor market trip"
   conditions:
-    - label: rainy
-      weather: {temperature_c: 12, condition: rainy}
+    - label: warm-rainy
+      weather: {temperature_c: 24, condition: rainy}
       expected_winner: B
-    - label: dry
-      weather: {temperature_c: 12, condition: clear}
+    - label: warm-dry
+      weather: {temperature_c: 24, condition: clear}
       expected_winner: A
 
+# Temperature held mild-warm in both so it does not justify the sweater; only
+# wind varies.
 - id: wp03
-  question: "Windy vs calm: is a fitted/secured layer favored in wind?"
+  question: "Windy vs calm at the same mild temperature: is a fitted/secured layer favored in wind?"
   outfit_a: [t5, b3]          # sleeveless blouse + pleated midi skirt (loose)
   outfit_b: [t5, b3, l5]      # + chunky knit sweater (more covered/secured)
   occasion: "afternoon by the waterfront"
   conditions:
-    - label: windy
-      weather: {temperature_c: 14, condition: windy}
+    - label: warm-windy
+      weather: {temperature_c: 22, condition: windy}
       expected_winner: B
-    - label: calm
-      weather: {temperature_c: 14, condition: clear}
+    - label: warm-calm
+      weather: {temperature_c: 22, condition: clear}
       expected_winner: A
 
 - id: wp04

@@ -164,3 +164,11 @@ Takeaway: the two clean, non-confounded cases show weather both moves the
 ranking (wp01) and respects dress code (wp04). The two failures are a
 test-design confound to fix by decoupling temperature from condition (e.g. warm
 + dry vs warm + rainy), not by relaxing the check.
+
+Update (same day): wp02/wp03 re-run after decoupling - temperature held warm in
+both conditions (24C for rain, 22C for wind) so only the condition varied. Both
+now pass: wp02 warm-rainy -> jacket, warm-dry -> no jacket; wp03 warm-windy ->
+sweater, warm-calm -> no sweater. Weather pairwise is now 4/4 ranking, 4/4
+garment-consistent. This confirms the earlier misses were the confound, not
+model behavior - only the uninformative variable changed, and the hypotheses
+held once isolated.
