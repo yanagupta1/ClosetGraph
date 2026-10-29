@@ -239,3 +239,60 @@
     entirely or only asserts the outfit "works" without any colour rationale.
     Score: 5 = clear, specific colour reasoning; 3 = brief or implicit;
     1 = no colour awareness.
+
+# weather (6 total: g25-g30) - DRAFT, same occasion varied by weather.
+# These assert on the full-pipeline ranking given fixed weather; checks that
+# reference an item the bounded pool did not sample will be reported inapplicable,
+# not failed (that is a coverage signal, not a ranking failure).
+- id: g25
+  category: weather
+  type: ranking_preference
+  occasion: "weekend walk around the city"
+  weather: {temperature_c: 1, condition: cold}
+  hard_checks:
+    combination_not_top_rank: [t5]
+  notes: "Cold: a sleeveless top alone should not top an outdoor walk."
+
+- id: g26
+  category: weather
+  type: ranking_preference
+  occasion: "weekend walk around the city"
+  weather: {temperature_c: 28, condition: sunny}
+  hard_checks:
+    top_rank_excludes: [l3]
+  notes: "Hot and sunny: a wool trench should not top the pick."
+
+- id: g27
+  category: weather
+  type: behavioral
+  occasion: "outdoor market trip"
+  weather: {temperature_c: 11, condition: rainy}
+  hard_checks:
+    combination_appears_ranked: [l4]
+  notes: "Rainy: rain jacket should be a viable top option (behavioral - may not be sampled)."
+
+- id: g28
+  category: weather
+  type: behavioral
+  occasion: "afternoon by the waterfront"
+  weather: {temperature_c: 13, condition: windy}
+  hard_checks:
+    combination_not_top_rank: [t5, b3]
+  notes: "Windy: a loose sleeveless-blouse + flowing-skirt pair should arguably not top a windy waterfront. Behavioral (collected) - wind expectations are fuzzy; review before asserting."
+
+- id: g29
+  category: weather
+  type: ranking_preference
+  occasion: "first client meeting, conservative office"
+  weather: {temperature_c: 2, condition: cold}
+  hard_checks:
+    top_rank_excludes: [t7, b5]
+  notes: "Cold but formal: weather must not drag casual items into the top pick."
+
+- id: g30
+  category: weather
+  type: behavioral
+  occasion: "weekend walk around the city"
+  hard_checks:
+    combination_not_top_rank: [t5]
+  notes: "No-weather control: same occasion as g25 but no weather block. Collected to compare the no-weather top pick against the cold (g25) one; not an auto-pass."

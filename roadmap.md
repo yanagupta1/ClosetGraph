@@ -119,7 +119,7 @@ Weather (in progress):
 - [x] Conditional weather RAG: weather.md indexed as its own category, retrieved only when weather context is present; guide is principle-based.
 - [x] Weather influences but does not override the occasion (stylist prompt), weighted by indoor vs outdoor exposure.
 - [x] Tool failures degrade gracefully (no fabricated weather; failure surfaced via weather_error; run continues).
-- [ ] Weather evals: extend the pairwise harness for weather context-reversal (same occasion and wardrobe, different weather), plus ~5-6 golden weather cases (sunny, dry, rainy, windy, cold, no-weather).
+- [x] Weather evals: pairwise context-reversal (same outfits/occasion, varied weather; cold/warm, dry/rainy, windy/calm, indoor-formal), ranking success reported separately from garment consistency; 6 golden weather cases (g25-g30: cold, hot, rainy, windy, cold-formal, no-weather); RAG-per-condition and no-weather/fetch-failure regression tests. Live demonstration run still pending.
 - [ ] Browser or web lookup path designed for later research use (design only, not built).
 - [ ] Shopping kept out of the main recommendation loop unless used later for wardrobe gap analysis.
 
