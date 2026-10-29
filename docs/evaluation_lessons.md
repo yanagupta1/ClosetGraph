@@ -189,3 +189,26 @@ rather than discarding everything.
 **Takeaway.** When inputs are structured and partial, merge at the field level
 with per-field provenance. "The user gave us something" rarely means "the user
 gave us everything."
+
+## 9. A controlled test must vary one variable at a time
+
+**Issue.** Weather pairwise cases meant to prove "a rain jacket wins only in the
+rain" and "a sweater wins only in wind" failed: the model kept the extra layer
+even in the dry/calm control.
+
+**Root cause.** The cases changed the condition (rainy->dry, windy->calm) but
+held temperature at 12-14C - cool enough that a jacket or sweater is reasonable
+regardless of rain or wind. Temperature and condition were confounded, so the
+"drop the layer" expectation was not defensible and the test could not attribute
+the result to the condition. The cases that used a real temperature gap (2C vs
+26C) passed cleanly.
+
+**Fix.** Decouple the variables: to isolate "condition", make the contrast
+warm+rainy vs warm+dry so temperature does not independently justify the layer.
+Correcting a confounded experiment is legitimate; relaxing the check to force a
+pass would not be.
+
+**Takeaway.** In a controlled comparison, change exactly one variable and hold
+the rest at a level that does not independently explain the outcome. A failing
+controlled test is as likely to indict the experiment's design as the system
+under test - check the design before blaming the model.

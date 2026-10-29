@@ -140,3 +140,27 @@ The runner behaved correctly (ran pairwise, captured the golden error without
 crashing). The earlier completed golden pass (15/21) still stands. Fix
 (follow-up): bring the golden request under 8000 - lower max_completion_tokens
 and/or compact the candidate serialization or retrieve fewer chunks.
+
+## Weather pairwise demonstration (Stage 3, 2026-10-29)
+
+First live run of the weather pairwise suite (`run_weather_pairwise_set`), same
+two outfits and occasion held fixed, only weather varied. 2/4 ranking passed,
+4/4 garment-consistent (no reasoning named a garment the outfit lacked).
+
+- wp01 (trench, 2C cold vs 26C warm): PASS. Cold -> trench wins; warm -> no
+  trench. Weather moved the ranking as expected.
+- wp04 (indoor formal, 1C cold vs 18C mild): PASS. Professional outfit wins in
+  both; the warm-but-casual hoodie outfit never wins. Weather influenced
+  layering WITHOUT overriding the dress code - the core Stage 3 goal.
+- wp02 (rain jacket) and wp03 (sweater): ranking FAIL, but the fault is the
+  fixture, not the model. Both held temperature constant (12C, 14C) and changed
+  only the condition (rainy->dry, windy->calm). At 12-14C a jacket/sweater is
+  reasonable regardless of rain/wind, so "drop the layer when dry/calm" was not
+  a defensible expectation - temperature and condition were confounded. The
+  model keeping a layer at 12C dry is sensible. wp01/wp04 passed precisely
+  because they used a real temperature gap.
+
+Takeaway: the two clean, non-confounded cases show weather both moves the
+ranking (wp01) and respects dress code (wp04). The two failures are a
+test-design confound to fix by decoupling temperature from condition (e.g. warm
++ dry vs warm + rainy), not by relaxing the check.
