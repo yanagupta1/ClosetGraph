@@ -16,8 +16,10 @@ CORPUS_FILES = {
     "layering": "style_guide/layering.md",
     "garments": "style_guide/garments.md",
     "color": "style_guide/color.md",
+    "weather": "style_guide/weather.md",
 }
-# weather.md intentionally excluded, not indexed until Stage 3
+# weather is indexed as its own category (Stage 3); it is retrieved only when
+# a request actually has weather context, so indoor/no-weather runs are unaffected.
 
 def chunk_markdown_file(filepath: str, category: str) -> list[dict]:
     """

@@ -115,9 +115,10 @@ Weather (in progress):
 
 - [ ] Weather context added through a free source or user-provided input (Open-Meteo, keyless, via stdlib urllib; plus user-provided override).
 - [ ] Optional weather inputs (temperature, condition) threaded through graph state and the eval harness, not just occasion.
-- [ ] Supervisor routing decides when weather is relevant (hybrid: keyword fast-path, LLM router fallback for uncovered cases).
-- [ ] Conditional weather RAG: index weather.md as its own category, retrieve it only when weather is relevant; revise the guide to general principles, not hardcoded rules.
-- [ ] Tool failures degrade gracefully (no fabricated weather; proceed without it and say so).
+- [x] Deterministic weather gating (no LLM router): weather tooling runs when inputs are available; the stylist judges stylistic impact. Graph stays linear.
+- [x] Conditional weather RAG: weather.md indexed as its own category, retrieved only when weather context is present; guide is principle-based.
+- [x] Weather influences but does not override the occasion (stylist prompt), weighted by indoor vs outdoor exposure.
+- [x] Tool failures degrade gracefully (no fabricated weather; failure surfaced via weather_error; run continues).
 - [ ] Weather evals: extend the pairwise harness for weather context-reversal (same occasion and wardrobe, different weather), plus ~5-6 golden weather cases (sunny, dry, rainy, windy, cold, no-weather).
 - [ ] Browser or web lookup path designed for later research use (design only, not built).
 - [ ] Shopping kept out of the main recommendation loop unless used later for wardrobe gap analysis.

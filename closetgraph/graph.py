@@ -24,6 +24,9 @@ def weather_lookup_node(state: ClosetGraphState) -> ClosetGraphState:
     )
     state["weather_context"] = context
     state["weather_error"] = error
+    # Deterministic gate: weather is "relevant" when we actually have context.
+    # Whether it changes the outfit is the stylist's judgment, not a router's.
+    state["weather_relevant"] = context is not None
     return state
 
 
@@ -34,7 +37,9 @@ def retrieve_style_guidance_node(state: ClosetGraphState) -> ClosetGraphState:
     Calls retrieve_style_guidance(state["occasion"]), writes result to
     state["retrieved_guidance"].
     """
-    state["retrieved_guidance"] = retrieve_style_guidance(state["occasion"])
+    state["retrieved_guidance"] = retrieve_style_guidance(
+        state["occasion"], weather_context=state.get("weather_context")
+    )
     return state
 
 
@@ -44,6 +49,7 @@ def stylist_node(state: ClosetGraphState) -> ClosetGraphState:
         state["wardrobe"],
         state["occasion"],
         state["retrieved_guidance"],
+        weather_context=state.get("weather_context"),
     )
     return state
 

@@ -121,6 +121,31 @@ def test_rank_outfits_uses_groq_response(monkeypatch, sample_wardrobe):
     assert ranked[0].items == ["t2", "b1", "l1"]
     assert completions.calls[0]["model"] == "test-model"
     assert "white silk blouse" in completions.calls[0]["messages"][0]["content"]
+    # No weather provided -> prompt says so, not a fabricated condition.
+    assert "Weather: none provided" in completions.calls[0]["messages"][0]["content"]
+
+
+def test_rank_outfits_includes_weather_in_prompt_when_provided(monkeypatch, sample_wardrobe):
+    from closetgraph.models import WeatherContext
+
+    completions = FakeCompletions(
+        [json.dumps([{"rank": 1, "items": ["t2", "b1"], "reasoning": "ok"}])]
+    )
+    FakeGroq.completions = completions
+    monkeypatch.setattr("closetgraph.stylist.Groq", FakeGroq)
+
+    rank_outfits(
+        [OutfitCandidate(items=["t2", "b1"])],
+        sample_wardrobe,
+        "client meeting",
+        weather_context=WeatherContext(
+            temperature_c=3, condition="rainy", sources={"temperature_c": "user"}
+        ),
+    )
+
+    prompt = completions.calls[0]["messages"][0]["content"]
+    assert "3 degrees celsius" in prompt
+    assert "rainy" in prompt
 
 
 def test_rank_outfits_retries_after_invalid_json(monkeypatch, sample_wardrobe):
