@@ -1,8 +1,9 @@
-# Engineering Lessons: Evaluating an LLM Styling System
+# Engineering Lessons: Building and Evaluating an LLM Styling System
 
-Three lessons from building ClosetGraph's Stage 2 evaluation that generalize
-beyond this project. Each is grounded in the actual implementation and observed
-behavior, not hypotheticals.
+Lessons from building ClosetGraph's evaluation (Stage 2) and tool-context work
+(Stage 3) that generalize beyond this project - evaluation methodology and
+architecture decisions alike. Each is grounded in the actual implementation and
+observed behavior, not hypotheticals.
 
 ## 1. A silent fallback is worse than a crash
 
@@ -123,3 +124,68 @@ grading its own family's output.
 objective, pairwise for relational, an LLM judge for subjective - and never
 evaluate a model with itself. Self-grading correlates errors and inflates
 scores.
+
+## 6. Reproducibility is not the same as coverage - do not seed to pass
+
+**Issue.** Bounding the candidate pool for the token budget (a sampled subset of
+all possible outfits) meant some golden checks referenced outfits the model was
+never shown. The first instinct - and what we initially did - was to pick the
+random seed so the referenced combinations landed in the sample.
+
+**Root cause.** That conflates two different goals. Seeding for reproducibility
+(stable runs) is good. Seeding so the eval passes is gaming: it hides sampling
+coverage, and it silently breaks the moment the wardrobe changes.
+
+**Fix.** The seed is now arbitrary and documented as reproducibility-only. A
+check whose referenced item/combination is absent from the pool is reported
+"inapplicable" rather than failed - distinguishing a missing item from a missing
+combination (the items can all exist yet never co-occur in one sampled outfit).
+Inapplicable checks are excluded from the pass rate, and applicable-coverage
+(applicable / total checks) is reported so that shrinking the pool shows up as a
+coverage problem even when nothing fails.
+
+**Takeaway.** Separate "is the run reproducible" from "did the eval actually get
+to test this." Never tune randomness to make checks pass; instead measure
+coverage as a first-class metric, and treat "the model never had the chance" as
+a distinct outcome from pass or fail.
+
+## 7. Deterministic control flow for data; the model only for judgment
+
+**Issue.** The first plan for "use weather when relevant" was an LLM router that
+decided whether weather was relevant to the occasion.
+
+**Root cause.** That made a routing component answer a styling question. Whether
+weather *changes the outfit* is compositional reasoning - the stylist's job.
+Worse, it added an LLM call (cost + the temp-0 nondeterminism of lesson 4) to a
+decision that is really just "do we have weather data?".
+
+**Fix.** Two separate decisions. A deterministic gate asks only "do we have or
+can we fetch weather?" (is there an explicit input or a location). If yes, the
+weather is resolved and passed to the stylist; the stylist then judges whether
+and how much it matters for this occasion, told explicitly that weather
+influences but never overrides the occasion's formality. The graph stays linear;
+no router, no extra LLM call.
+
+**Takeaway.** Split data-availability (deterministic, cheap, reproducible) from
+judgment (the model's job). Do not spend an LLM call - and import its
+nondeterminism - to decide something code can decide, and do not let a router
+pre-empt the reasoning the downstream model exists to do.
+
+## 8. Treat partial structured input as partial
+
+**Issue.** Weather resolution was all-or-nothing: if the user supplied any field
+(say temperature), the lookup was skipped entirely, so "3C in NYC" kept the
+temperature but never discovered it was snowing.
+
+**Root cause.** Presence of one field was treated as presence of all. User
+precedence was applied at the whole-object level instead of per field.
+
+**Fix.** Resolve field by field: user-provided fields always win, and the
+fetcher is consulted only to fill the gaps (and only when a location is
+available). Provenance became per-field (a sources map), so a context can be
+part user-provided and part fetched, and a failed fill keeps the user's fields
+rather than discarding everything.
+
+**Takeaway.** When inputs are structured and partial, merge at the field level
+with per-field provenance. "The user gave us something" rarely means "the user
+gave us everything."
