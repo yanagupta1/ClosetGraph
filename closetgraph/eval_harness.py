@@ -156,6 +156,7 @@ def run_golden_set(golden_set_path, wardrobe_path, delay_seconds: float = 0) -> 
     passed: list[str] = []
     failed: list[dict] = []
     inapplicable: list[dict] = []
+    errored: list[dict] = []
     behavioral_pending: list[dict] = []
     constraint_violations: list[dict] = []
     # per-category tallies for ranking checks: {cat: {passed, failed, inapplicable}}
@@ -164,16 +165,23 @@ def run_golden_set(golden_set_path, wardrobe_path, delay_seconds: float = 0) -> 
     for index, entry in enumerate(entries):
         if delay_seconds and index:
             time.sleep(delay_seconds)
-        result = graph.invoke(
-            {
-                "wardrobe": wardrobe,
-                "occasion": entry["occasion"],
-                "candidate_outfits": [],
-                "ranked_outfits": [],
-                # Fixed weather from the fixture, if any (no external API call).
-                "weather_input": _weather_input_from_entry(entry),
-            }
-        )
+        try:
+            # Per-case isolation: a single bad generation (e.g. truncated JSON)
+            # or transient error must not abort the whole pass.
+            result = graph.invoke(
+                {
+                    "wardrobe": wardrobe,
+                    "occasion": entry["occasion"],
+                    "candidate_outfits": [],
+                    "ranked_outfits": [],
+                    # Fixed weather from the fixture, if any (no external API call).
+                    "weather_input": _weather_input_from_entry(entry),
+                }
+            )
+        except Exception as exc:
+            errored.append({"id": entry["id"], "error": repr(exc)})
+            print(f"  {entry['id']}: errored ({exc!r})")
+            continue
         ranked = result["ranked_outfits"]
         candidates = result["candidate_outfits"]
 
@@ -258,12 +266,14 @@ def run_golden_set(golden_set_path, wardrobe_path, delay_seconds: float = 0) -> 
     print(
         f"Behavioral: {len(behavioral_pending)} collected "
         f"({judged_passed}/{len(judged)} rubric-judged passed). "
-        f"Structural violations: {len(constraint_violations)}."
+        f"Structural violations: {len(constraint_violations)}. "
+        f"Errored (could not evaluate): {len(errored)}."
     )
     return {
         "passed": passed,
         "failed": failed,
         "inapplicable": inapplicable,
+        "errored": errored,
         "behavioral_pending": behavioral_pending,
         "constraint_violations": constraint_violations,
         "coverage": coverage,

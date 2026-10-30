@@ -141,6 +141,33 @@ def test_run_golden_set_injects_fixture_weather_without_api(tmp_path, monkeypatc
     assert by_occasion["office"] is None
 
 
+def test_run_golden_set_isolates_per_case_errors(tmp_path, monkeypatch):
+    # One case raises (e.g. truncated JSON); the other must still be evaluated.
+    entries = [
+        {"id": "boom", "category": "occasion_mapping", "type": "ranking_preference",
+         "occasion": "explode", "hard_checks": {"top_rank_excludes": ["b5"]}},
+        {"id": "ok", "category": "occasion_mapping", "type": "ranking_preference",
+         "occasion": "office", "hard_checks": {"top_rank_excludes": ["b5"]}},
+    ]
+    golden_path, wardrobe_path = _write_inputs(tmp_path, entries)
+
+    class ExplodingGraph:
+        def invoke(self, state):
+            if state["occasion"] == "explode":
+                raise ValueError("Unterminated string")
+            state["ranked_outfits"] = [RankedOutfit(items=["t1", "b1"], rank=1, reasoning="x")]
+            state["candidate_outfits"] = [OutfitCandidate(items=["t1", "b1"])]
+            return state
+
+    monkeypatch.setattr(eval_harness, "build_graph", lambda: ExplodingGraph())
+
+    result = eval_harness.run_golden_set(str(golden_path), str(wardrobe_path))
+
+    assert [e["id"] for e in result["errored"]] == ["boom"]
+    assert result["passed"] == ["ok"]  # the good case still evaluated
+    assert "Unterminated string" in result["errored"][0]["error"]
+
+
 def test_run_golden_set_marks_inapplicable_missing_item_vs_combination(tmp_path, monkeypatch):
     entries = [
         {   # references b5, which is NOT in the candidate pool -> missing_item
