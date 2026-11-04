@@ -111,19 +111,21 @@ Foundation and evaluation hardening (done):
 - [x] Eval harness marks checks "inapplicable" when the model was never offered the chance, distinguishing missing_item from missing_combination (items present does not mean the outfit exists).
 - [x] Two-level eval coverage report (overall + per-category): inapplicable excluded from pass rate; applicable-coverage surfaces when bounding the pool reduces what the suite actually tests.
 
-Weather (in progress):
+Weather (done):
 
-- [ ] Weather context added through a free source or user-provided input (Open-Meteo, keyless, via stdlib urllib; plus user-provided override).
-- [ ] Optional weather inputs (temperature, condition) threaded through graph state and the eval harness, not just occasion.
+- [x] Weather context from a free source or user-provided input (Open-Meteo, keyless, via stdlib urllib; user-provided takes precedence, per-field merge fills only missing fields).
+- [x] Optional weather inputs (temperature, condition) threaded through graph state and the eval harness, not just occasion.
 - [x] Deterministic weather gating (no LLM router): weather tooling runs when inputs are available; the stylist judges stylistic impact. Graph stays linear.
 - [x] Conditional weather RAG: weather.md indexed as its own category, retrieved only when weather context is present; guide is principle-based.
 - [x] Weather influences but does not override the occasion (stylist prompt), weighted by indoor vs outdoor exposure.
 - [x] Tool failures degrade gracefully (no fabricated weather; failure surfaced via weather_error; run continues).
-- [x] Weather evals: pairwise context-reversal (same outfits/occasion, varied weather; cold/warm, dry/rainy, windy/calm, indoor-formal), ranking success reported separately from garment consistency; 6 golden weather cases (g25-g30: cold, hot, rainy, windy, cold-formal, no-weather); RAG-per-condition and no-weather/fetch-failure regression tests. Live demonstration run still pending.
-- [ ] Browser or web lookup path designed for later research use (design only, not built).
-- [ ] Shopping kept out of the main recommendation loop unless used later for wardrobe gap analysis.
+- [x] Weather evals: pairwise context-reversal (same outfits/occasion, varied weather; cold/warm, dry/rainy, windy/calm, indoor-formal) at 4/4 ranking and 4/4 garment-consistent; 6 golden weather cases (g25-g30); RAG-per-condition and no-weather/fetch-failure regression tests. Full golden run: 100% of applicable ranking checks pass, 0 structural violations.
+- [x] Browser or web lookup path designed for later research use (design only; see docs/research-lookup-design.md).
+- [x] Shopping kept out of the main recommendation loop (never added; reserved for later wardrobe-gap analysis).
 
-**Done when:** weather can visibly change an outfit ranking without breaking the owned-wardrobe constraint.
+**Done when:** weather can visibly change an outfit ranking without breaking the owned-wardrobe constraint. (Met.)
+
+Deferred to Stage 4: time-aware weather (future-dated forecasts and time-of-day windows) and natural-language date/location extraction - these pair naturally with the research agent's understanding step.
 
 ## Stage 4: Research Agent
 
