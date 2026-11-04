@@ -149,7 +149,7 @@ def rank_outfits(
             model=model,
             messages=[{"role": "user", "content": prompt}],
             temperature=0,
-            max_completion_tokens=4096,
+            max_completion_tokens=5000,
         )
         content = response.choices[0].message.content
         usage = getattr(response, "usage", None)
@@ -183,7 +183,7 @@ def rank_outfits(
                 },
             ],
             temperature=0,
-            max_completion_tokens=4096,
+            max_completion_tokens=5000,
         )
         retry_content = retry_response.choices[0].message.content
         return _parse_ranked_outfits(retry_content)

@@ -194,3 +194,24 @@ First complete golden pass after adding per-case error isolation
 
 The golden set itself is healthy (0 failures, 0 violations); the empty-response
 tail is a stylist token-budget matter, not a fixture problem.
+
+### Root cause of the empty responses (measured, 2026-11-04)
+
+Direct instrumented calls (reading Groq `usage`) on the two errored cases at
+max_completion_tokens=5000:
+
+- g05 x3: all returned content (was empty at 4096). Reasoning tokens 4118 /
+  4090 / 4526 - one run's reasoning alone EXCEEDED the old 4096 cap, which is
+  exactly why it returned empty at 4096 (reasoning consumed the whole budget,
+  nothing left for the answer).
+- g24 x2: both returned content (reasoning 3162 / 3564).
+- Prompt ~1868 tokens; reservation ~6868 (prompt + 5000), under the 8000 TPM
+  cap - zero 413s. The 429s seen late in the probe were cumulative rate/daily
+  limits from heavy same-day testing, not the token-size change.
+
+Fix kept: max_completion_tokens 4096 -> 5000. It fixes the empty tail (the 20B
+reasoning model needs up to ~4500 reasoning tokens) with no 413. Caveat:
+reservation is now ~86% of TPM, so throttling stays necessary and the occasional
+429 is possible (now recorded as errored, not fatal). Cleaner long-term fix:
+lower reasoning_effort so the model does not spend 3000-4500 tokens reasoning
+about a ranking - reduces both empties and TPM pressure. Deferred.
