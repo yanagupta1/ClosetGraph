@@ -4,15 +4,6 @@
 
 ClosetGraph generates and ranks complete outfits from clothes you actually own, combining compositional styling reasoning, retrieved fashion knowledge, occasion constraints, and real-world weather.
 
-![Python](https://img.shields.io/badge/Python-3.14-3776AB?logo=python&logoColor=white)
-![LangGraph](https://img.shields.io/badge/LangGraph-orchestration-1C3C3C)
-![Groq](https://img.shields.io/badge/Groq-LLM-F55036)
-![ChromaDB](https://img.shields.io/badge/ChromaDB-RAG-FFCA28)
-![Open-Meteo](https://img.shields.io/badge/Open--Meteo-weather-0A84FF)
-![Langfuse](https://img.shields.io/badge/Langfuse-tracing-000000)
-![Tests](https://img.shields.io/badge/tests-69%20passing-success)
-![Cost](https://img.shields.io/badge/run%20cost-%240-brightgreen)
-
 The hard part isn't labeling a shirt "casual." It's judging a *complete outfit*: a tank reads business-casual under a tailored blazer, tailored trousers move from office to dinner depending on the top, and a trench earns its place only when it's cold. ClosetGraph is built around that compositional judgment, over clothes the user owns.
 
 ---
@@ -26,7 +17,7 @@ The hard part isn't labeling a shirt "casual." It's judging a *complete outfit*:
 > **grey oversized graphic tee · relaxed straight-leg denim · black rain jacket · grey wool scarf**
 > *"...combine to provide waterproof coverage, warmth, and a casual yet polished look suitable for a rainy market trip."*
 
-The weather pulled a rain jacket and scarf into the top pick and the reasoning explains why — without being told which items to use.
+The weather pulled a rain jacket and scarf into the top pick and the reasoning explains why without being told which items to use.
 
 **Context-sensitivity (verified controlled test).** For the *same* `weekend walk` occasion, only the weather changes:
 
@@ -60,7 +51,7 @@ A LangGraph pipeline: deterministic candidate generation feeds a weather step (s
 
 **Wardrobe-grounded recommendations.** Only ever recommends items the user owns. A deterministic validator enforces ownership and outfit structure (one top, one bottom, no duplicates) on every output.
 
-**Compositional styling.** Reasons about complete combinations — layering, effective formality, coverage, and color cohesion — rather than labeling single garments.
+**Compositional styling.** Reasons about complete combinations including layering, effective formality, coverage, and color cohesion rather than labeling single garments.
 
 **Retrieval-augmented styling.** A custom style-guide corpus (5 documents, 28 sections) is indexed in ChromaDB and retrieved per category (occasion, layering, garments, color), so the stylist reasons with grounded fashion principles.
 
@@ -146,14 +137,14 @@ for o in result["ranked_outfits"][:5]:
 **Evaluations** run through `scripts/run_evals.py` (golden / pairwise / weather suites, writing a JSON report).
 
 Notes:
-- The ChromaDB index is generated locally and gitignored — rebuild it after cloning and whenever the styling corpus changes (`python -m closetgraph.indexing`).
+- The ChromaDB index is generated locally and gitignored and must be rebuilt after cloning and whenever the styling corpus changes (`python -m closetgraph.indexing`).
 - Live Groq evaluations consume free-tier tokens and can hit daily rate limits; the eval runner throttles and isolates per-case failures so one bad call doesn't abort a run.
 
 ---
 
 ## Engineering Decisions
 
-- **Bounded, deterministic candidate generation** instead of the full Cartesian product — keeps the stylist prompt small and reproducible as the wardrobe grows, while preserving compositional reasoning over a curated pool (plus deterministic accessory variants).
+- **Bounded, deterministic candidate generation** instead of the full Cartesian product it keeps the stylist prompt small and reproducible as the wardrobe grows, while preserving compositional reasoning over a curated pool (plus deterministic accessory variants).
 - **Hard constraints in Python, suitability in the LLM.** Ownership and outfit structure are objective and cheap to verify deterministically; nuanced styling is where the model earns its place.
 - **Conditional RAG.** Weather guidance is retrieved only when a request actually has weather, so indoor and no-weather runs stay identical to the baseline and prompts stay lean.
 - **Deterministic weather gating, not an LLM router.** "Do we have weather?" is a data-availability check (code). "Does it change the outfit?" is a judgment (the stylist). No extra LLM call, no routing nondeterminism.
@@ -168,11 +159,11 @@ The reasoning behind these (with the failures that motivated them) is written up
 
 Current: wardrobe-grounded recommendations, compositional styling, style-guide RAG, and weather context are implemented and evaluated. Planned, not yet built:
 
-- **Research agent** — look up unfamiliar venues and dress codes, summarized into styling constraints ([design note](docs/research-lookup-design.md))
-- **Date/time-aware forecasts** — future-dated and time-of-day weather
-- **Vision-based wardrobe ingestion** — add items from photos
-- **Preference memory** — durable user style preferences
-- **UI and deployment** — a usable app on free hosting
+- **Research agent**: look up unfamiliar venues and dress codes, summarized into styling constraints ([design note](docs/research-lookup-design.md))
+- **Date/time-aware forecasts**: future-dated and time-of-day weather
+- **Vision-based wardrobe ingestion**: add items from photos
+- **Preference memory**: durable user style preferences
+- **UI and deployment**: a usable app on free hosting
 
 Full staged plan: **[roadmap.md](roadmap.md)**.
 
