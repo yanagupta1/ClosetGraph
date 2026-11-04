@@ -172,3 +172,25 @@ sweater, warm-calm -> no sweater. Weather pairwise is now 4/4 ranking, 4/4
 garment-consistent. This confirms the earlier misses were the confound, not
 model behavior - only the uninformative variable changed, and the hypotheses
 held once isolated.
+
+## Full golden run, Stage 3 (2026-11-04)
+
+First complete golden pass after adding per-case error isolation
+(`docs/stage3-golden-report.json`). Model gpt-oss-20b, judge gpt-oss-120b.
+
+- Ranking: 12/12 applicable checks passed (100%), 0 failed, 0 structural
+  violations. Includes the weather cases g25 (cold), g26 (hot), g29
+  (cold-but-formal) - weather holds in the full pipeline, not only pairwise.
+- Coverage: 12/14 (86%). 2 inapplicable (g15, g16, missing_combination): the
+  bounded candidate pool did not generate those combinations, so the checks
+  could not run - reported as coverage, not pass/fail.
+- Behavioral: 14 collected; judged g22 = pass 3/5, g23 = pass 5/5.
+- Errored: 2/30 (g05, g24) - the stylist returned empty content ("Model
+  response was empty"): the 20B reasoning model spent its entire 4096-token
+  budget on reasoning, leaving nothing for the answer, and the retry was also
+  empty. ~7% tail. g24 (a color case) errored before reaching the judge, so
+  only 2 of 3 color cases were judged. Per-case isolation (new) kept this from
+  aborting the pass.
+
+The golden set itself is healthy (0 failures, 0 violations); the empty-response
+tail is a stylist token-budget matter, not a fixture problem.
