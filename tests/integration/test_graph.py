@@ -1,9 +1,51 @@
-from closetgraph.graph import build_graph
-from closetgraph.models import RankedOutfit
+from closetgraph.graph import build_graph, weather_lookup_node
+from closetgraph.models import RankedOutfit, WeatherInput
+
+
+def test_weather_lookup_node_resolves_user_weather_without_api(monkeypatch):
+    # User-provided weather resolves without any fetch call.
+    monkeypatch.setattr(
+        "closetgraph.graph.fetch_open_meteo",
+        lambda location: (_ for _ in ()).throw(AssertionError("no API expected")),
+    )
+    state = {"weather_input": WeatherInput(temperature_c=5, condition="rainy")}
+
+    out = weather_lookup_node(state)
+
+    assert out["weather_context"].sources == {
+        "temperature_c": "user",
+        "condition": "user",
+    }
+    assert out["weather_context"].condition == "rainy"
+    assert out["weather_error"] is None
+
+
+def test_weather_lookup_node_no_input_is_noop(monkeypatch):
+    monkeypatch.setattr(
+        "closetgraph.graph.fetch_open_meteo",
+        lambda location: (_ for _ in ()).throw(AssertionError("no API expected")),
+    )
+
+    out = weather_lookup_node({"weather_input": None})
+
+    assert out["weather_context"] is None
+    assert out["weather_error"] is None
+
+
+def test_weather_lookup_node_surfaces_fetch_error(monkeypatch):
+    def boom(location):
+        raise OSError("network down")
+
+    monkeypatch.setattr("closetgraph.graph.fetch_open_meteo", boom)
+
+    out = weather_lookup_node({"weather_input": WeatherInput(location="Paris")})
+
+    assert out["weather_context"] is None  # no fabrication
+    assert "network down" in out["weather_error"]
 
 
 def test_graph_generates_candidates_and_ranked_outfits(monkeypatch, sample_wardrobe):
-    def fake_rank_outfits(candidates, wardrobe, occasion, retrieved_guidance=None):
+    def fake_rank_outfits(candidates, wardrobe, occasion, retrieved_guidance=None, weather_context=None):
         assert len(candidates) == 12
         assert wardrobe == sample_wardrobe
         assert occasion == "team happy hour, casual bar"
@@ -16,7 +58,7 @@ def test_graph_generates_candidates_and_ranked_outfits(monkeypatch, sample_wardr
         ]
 
     monkeypatch.setattr("closetgraph.graph.rank_outfits", fake_rank_outfits)
-    monkeypatch.setattr("closetgraph.graph.retrieve_style_guidance", lambda occasion: [])
+    monkeypatch.setattr("closetgraph.graph.retrieve_style_guidance", lambda occasion, weather_context=None: [])
     graph = build_graph()
 
     result = graph.invoke(
@@ -41,7 +83,7 @@ def test_graph_generates_candidates_and_ranked_outfits(monkeypatch, sample_wardr
 def test_graph_preserves_occasion_through_stylist_node(monkeypatch, sample_wardrobe):
     seen = {}
 
-    def fake_rank_outfits(candidates, wardrobe, occasion, retrieved_guidance=None):
+    def fake_rank_outfits(candidates, wardrobe, occasion, retrieved_guidance=None, weather_context=None):
         seen["occasion"] = occasion
         return [
             RankedOutfit(
@@ -52,7 +94,7 @@ def test_graph_preserves_occasion_through_stylist_node(monkeypatch, sample_wardr
         ]
 
     monkeypatch.setattr("closetgraph.graph.rank_outfits", fake_rank_outfits)
-    monkeypatch.setattr("closetgraph.graph.retrieve_style_guidance", lambda occasion: [])
+    monkeypatch.setattr("closetgraph.graph.retrieve_style_guidance", lambda occasion, weather_context=None: [])
     graph = build_graph()
 
     result = graph.invoke(
@@ -66,3 +108,64 @@ def test_graph_preserves_occasion_through_stylist_node(monkeypatch, sample_wardr
 
     assert seen["occasion"] == "first client meeting, conservative office"
     assert result["ranked_outfits"][0].items == ["t2", "b1", "l1"]
+
+
+def _stub_stylist_and_retrieval(monkeypatch):
+    monkeypatch.setattr(
+        "closetgraph.graph.rank_outfits",
+        lambda c, w, o, rg=None, weather_context=None: [
+            RankedOutfit(items=c[0].items, rank=1, reasoning="ok")
+        ],
+    )
+    monkeypatch.setattr(
+        "closetgraph.graph.retrieve_style_guidance",
+        lambda occasion, weather_context=None: [],
+    )
+
+
+def test_graph_no_weather_regression(monkeypatch, sample_wardrobe):
+    # No weather input: graph runs exactly like Stage 2, weather_context stays None.
+    _stub_stylist_and_retrieval(monkeypatch)
+    monkeypatch.setattr(
+        "closetgraph.graph.fetch_open_meteo",
+        lambda loc: (_ for _ in ()).throw(AssertionError("no API without location")),
+    )
+    graph = build_graph()
+
+    result = graph.invoke(
+        {
+            "wardrobe": sample_wardrobe,
+            "occasion": "casual brunch",
+            "candidate_outfits": [],
+            "ranked_outfits": [],
+        }
+    )
+
+    assert result["weather_context"] is None
+    assert result["weather_error"] is None
+    assert result["ranked_outfits"]  # still produces a ranking
+
+
+def test_graph_weather_fetch_failure_regression(monkeypatch, sample_wardrobe):
+    # Location given but lookup fails: run continues, error surfaced, no fabrication.
+    _stub_stylist_and_retrieval(monkeypatch)
+
+    def boom(location):
+        raise OSError("network down")
+
+    monkeypatch.setattr("closetgraph.graph.fetch_open_meteo", boom)
+    graph = build_graph()
+
+    result = graph.invoke(
+        {
+            "wardrobe": sample_wardrobe,
+            "occasion": "outdoor market",
+            "candidate_outfits": [],
+            "ranked_outfits": [],
+            "weather_input": WeatherInput(location="Nowhere"),
+        }
+    )
+
+    assert result["weather_context"] is None  # not fabricated
+    assert "network down" in result["weather_error"]
+    assert result["ranked_outfits"]  # degrades gracefully, still ranks

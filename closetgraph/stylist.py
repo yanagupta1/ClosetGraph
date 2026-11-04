@@ -13,6 +13,8 @@ STYLIST_PROMPT_TEMPLATE = """You are a professional personal stylist evaluating 
 
 Occasion: {occasion}
 
+Weather: {weather}
+
 Relevant style guidance retrieved for this occasion:
 {guidance}
 
@@ -23,6 +25,7 @@ Reasoning guidelines:
 - An item's formality can shift depending on how it's styled. A tank top alone is casual, but layered under a structured blazer with tailored trousers, the same tank can read as business casual. A silk blouse with dark jeans is more polished than the jeans alone would suggest.
 - Layering pieces can raise the effective formality of what's underneath them when the combination makes sense. Penalize combinations that clash in formality or don't make practical sense together.
 - Favor outfits that are well-suited and coherent over outfits that are merely acceptable.
+- Weather, when provided, INFLUENCES but does NOT override the occasion. Keep the occasion's required formality, and within that, let weather shift which suitable options rank higher (e.g. for a cold, rainy client meeting still stay professional, but favor options with appropriate outerwear). Weight weather by the occasion: it matters more for outdoor or prolonged-exposure settings than for brief indoor ones. If weather is "none provided", rank without weather considerations.
 Even when no candidate fully satisfies the occasion, always return your best 5 available candidates ranked by how close they come, with reasoning that explicitly names what's missing. Never return an outfit with empty items.
 
 Candidate outfits:
@@ -37,23 +40,25 @@ Return your top 5 ranked outfits as a JSON array, best (1) to fifth-best (5), an
 """
 
 
-def _resolve_candidates(
+def _format_candidates(
     candidates: list[OutfitCandidate], wardrobe: list[WardrobeItem]
-) -> list[dict[str, object]]:
+) -> str:
+    """
+    One compact line per candidate outfit, e.g.
+    "1. t1 (black scoop-neck tank top, top) + b1 (black tailored trousers, bottom)".
+    Keeps the item id (which the stylist must return), name, and category, but
+    drops the verbose indented JSON - the candidate block was ~58% of the prompt
+    and the repeated keys/braces were pure overhead.
+    """
     wardrobe_by_id = {item.id: item for item in wardrobe}
-    resolved = []
-
-    for candidate in candidates:
-        resolved.append(
-            {
-                "items": [
-                    wardrobe_by_id[item_id].model_dump()
-                    for item_id in candidate.items
-                ]
-            }
-        )
-
-    return resolved
+    lines = []
+    for index, candidate in enumerate(candidates, start=1):
+        parts = [
+            f"{item_id} ({wardrobe_by_id[item_id].name}, {wardrobe_by_id[item_id].category})"
+            for item_id in candidate.items
+        ]
+        lines.append(f"{index}. " + " + ".join(parts))
+    return "\n".join(lines)
 
 
 def _extract_json_array(content: str | None) -> str:
@@ -91,22 +96,35 @@ def _parse_ranked_outfits(content: str) -> list[RankedOutfit]:
     return sorted(ranked, key=lambda outfit: outfit.rank)
 
 
+def _format_weather(weather_context) -> str:
+    """Human-readable weather line for the prompt, or a clear 'none' marker."""
+    if weather_context is None:
+        return "none provided"
+    parts = []
+    if weather_context.temperature_c is not None:
+        parts.append(f"{weather_context.temperature_c:g} degrees celsius")
+    if weather_context.condition:
+        parts.append(weather_context.condition)
+    return ", ".join(parts) or "none provided"
+
+
 @observe()
 def rank_outfits(
     candidates: list[OutfitCandidate],
     wardrobe: list[WardrobeItem],
     occasion: str,
     retrieved_guidance: list[str] | None = None,
+    weather_context=None,
 ) -> list[RankedOutfit]:
     load_dotenv()
     model = os.getenv("GROQ_MODEL", "openai/gpt-oss-20b")
 
     guidance_text = "\n\n".join(retrieved_guidance or []) or "(none retrieved)"
-    resolved_candidates = _resolve_candidates(candidates, wardrobe)
     prompt = STYLIST_PROMPT_TEMPLATE.format(
         occasion=occasion,
+        weather=_format_weather(weather_context),
         guidance=guidance_text,
-        candidates=json.dumps(resolved_candidates, indent=2),
+        candidates=_format_candidates(candidates, wardrobe),
     )
 
     client = Groq()
@@ -131,7 +149,7 @@ def rank_outfits(
             model=model,
             messages=[{"role": "user", "content": prompt}],
             temperature=0,
-            max_completion_tokens=8192,
+            max_completion_tokens=5000,
         )
         content = response.choices[0].message.content
         usage = getattr(response, "usage", None)
@@ -165,7 +183,7 @@ def rank_outfits(
                 },
             ],
             temperature=0,
-            max_completion_tokens=8192,
+            max_completion_tokens=5000,
         )
         retry_content = retry_response.choices[0].message.content
         return _parse_ranked_outfits(retry_content)

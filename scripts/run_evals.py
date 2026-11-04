@@ -26,7 +26,11 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from dotenv import load_dotenv
 from langfuse import get_client
 
-from closetgraph.eval_harness import run_golden_set, run_pairwise_set
+from closetgraph.eval_harness import (
+    run_golden_set,
+    run_pairwise_set,
+    run_weather_pairwise_set,
+)
 
 
 def main() -> None:
@@ -34,8 +38,8 @@ def main() -> None:
         description="Run ClosetGraph evals (golden and/or pairwise) and save a JSON report."
     )
     parser.add_argument(
-        "--suite", choices=["golden", "pairwise", "both"], default="both",
-        help="which suite to run (default: both)",
+        "--suite", choices=["golden", "pairwise", "weather", "all"], default="all",
+        help="which suite to run (default: all)",
     )
     parser.add_argument(
         "--repeats", type=int, default=1,
@@ -47,6 +51,9 @@ def main() -> None:
     )
     parser.add_argument("--golden-path", default="tests/eval/golden_set.yaml")
     parser.add_argument("--pairwise-path", default="tests/eval/pairwise_set.yaml")
+    parser.add_argument(
+        "--weather-pairwise-path", default="tests/eval/weather_pairwise_set.yaml"
+    )
     parser.add_argument("--wardrobe-path", default="docs/wardrobe.json")
     parser.add_argument(
         "--out", default=None,
@@ -63,6 +70,7 @@ def main() -> None:
             "delay_seconds": args.delay,
             "golden_path": args.golden_path,
             "pairwise_path": args.pairwise_path,
+            "weather_pairwise_path": args.weather_pairwise_path,
             "wardrobe_path": args.wardrobe_path,
             "groq_model": os.getenv("GROQ_MODEL", "openai/gpt-oss-20b"),
             "judge_model": os.getenv("JUDGE_MODEL", "openai/gpt-oss-120b"),
@@ -70,10 +78,11 @@ def main() -> None:
         },
         "golden": [],
         "pairwise": [],
+        "weather_pairwise": [],
         "errors": [],
     }
 
-    if args.suite in ("golden", "both"):
+    if args.suite in ("golden", "all"):
         for i in range(args.repeats):
             try:
                 report["golden"].append(
@@ -83,7 +92,7 @@ def main() -> None:
                 report["errors"].append({"suite": "golden", "repeat": i, "error": repr(error)})
                 print(f"golden repeat {i} failed: {error!r}")
 
-    if args.suite in ("pairwise", "both"):
+    if args.suite in ("pairwise", "all"):
         try:
             report["pairwise"] = run_pairwise_set(
                 args.pairwise_path, args.wardrobe_path,
@@ -92,6 +101,15 @@ def main() -> None:
         except Exception as error:
             report["errors"].append({"suite": "pairwise", "error": repr(error)})
             print(f"pairwise failed: {error!r}")
+
+    if args.suite in ("weather", "all"):
+        try:
+            report["weather_pairwise"] = run_weather_pairwise_set(
+                args.weather_pairwise_path, args.wardrobe_path, delay_seconds=args.delay
+            )
+        except Exception as error:
+            report["errors"].append({"suite": "weather", "error": repr(error)})
+            print(f"weather pairwise failed: {error!r}")
 
     try:
         get_client().flush()

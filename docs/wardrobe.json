@@ -15,5 +15,7 @@
   {"id": "b5", "name": "relaxed straight-leg denim", "category": "bottom"},
   {"id": "l3", "name": "camel wool trench coat", "category": "layering"},
   {"id": "l4", "name": "black rain jacket", "category": "layering"},
-  {"id": "a1", "name": "grey wool scarf", "category": "layering"}
+  {"id": "l5", "name": "chunky knit sweater", "category": "layering"},
+  {"id": "l6", "name": "grey pullover hoodie", "category": "layering"},
+  {"id": "a1", "name": "grey wool scarf", "category": "accessory"}
 ]

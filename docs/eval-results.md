@@ -140,3 +140,78 @@ The runner behaved correctly (ran pairwise, captured the golden error without
 crashing). The earlier completed golden pass (15/21) still stands. Fix
 (follow-up): bring the golden request under 8000 - lower max_completion_tokens
 and/or compact the candidate serialization or retrieve fewer chunks.
+
+## Weather pairwise demonstration (Stage 3, 2026-10-29)
+
+First live run of the weather pairwise suite (`run_weather_pairwise_set`), same
+two outfits and occasion held fixed, only weather varied. 2/4 ranking passed,
+4/4 garment-consistent (no reasoning named a garment the outfit lacked).
+
+- wp01 (trench, 2C cold vs 26C warm): PASS. Cold -> trench wins; warm -> no
+  trench. Weather moved the ranking as expected.
+- wp04 (indoor formal, 1C cold vs 18C mild): PASS. Professional outfit wins in
+  both; the warm-but-casual hoodie outfit never wins. Weather influenced
+  layering WITHOUT overriding the dress code - the core Stage 3 goal.
+- wp02 (rain jacket) and wp03 (sweater): ranking FAIL, but the fault is the
+  fixture, not the model. Both held temperature constant (12C, 14C) and changed
+  only the condition (rainy->dry, windy->calm). At 12-14C a jacket/sweater is
+  reasonable regardless of rain/wind, so "drop the layer when dry/calm" was not
+  a defensible expectation - temperature and condition were confounded. The
+  model keeping a layer at 12C dry is sensible. wp01/wp04 passed precisely
+  because they used a real temperature gap.
+
+Takeaway: the two clean, non-confounded cases show weather both moves the
+ranking (wp01) and respects dress code (wp04). The two failures are a
+test-design confound to fix by decoupling temperature from condition (e.g. warm
++ dry vs warm + rainy), not by relaxing the check.
+
+Update (same day): wp02/wp03 re-run after decoupling - temperature held warm in
+both conditions (24C for rain, 22C for wind) so only the condition varied. Both
+now pass: wp02 warm-rainy -> jacket, warm-dry -> no jacket; wp03 warm-windy ->
+sweater, warm-calm -> no sweater. Weather pairwise is now 4/4 ranking, 4/4
+garment-consistent. This confirms the earlier misses were the confound, not
+model behavior - only the uninformative variable changed, and the hypotheses
+held once isolated.
+
+## Full golden run, Stage 3 (2026-11-04)
+
+First complete golden pass after adding per-case error isolation
+(`docs/stage3-golden-report.json`). Model gpt-oss-20b, judge gpt-oss-120b.
+
+- Ranking: 12/12 applicable checks passed (100%), 0 failed, 0 structural
+  violations. Includes the weather cases g25 (cold), g26 (hot), g29
+  (cold-but-formal) - weather holds in the full pipeline, not only pairwise.
+- Coverage: 12/14 (86%). 2 inapplicable (g15, g16, missing_combination): the
+  bounded candidate pool did not generate those combinations, so the checks
+  could not run - reported as coverage, not pass/fail.
+- Behavioral: 14 collected; judged g22 = pass 3/5, g23 = pass 5/5.
+- Errored: 2/30 (g05, g24) - the stylist returned empty content ("Model
+  response was empty"): the 20B reasoning model spent its entire 4096-token
+  budget on reasoning, leaving nothing for the answer, and the retry was also
+  empty. ~7% tail. g24 (a color case) errored before reaching the judge, so
+  only 2 of 3 color cases were judged. Per-case isolation (new) kept this from
+  aborting the pass.
+
+The golden set itself is healthy (0 failures, 0 violations); the empty-response
+tail is a stylist token-budget matter, not a fixture problem.
+
+### Root cause of the empty responses (measured, 2026-11-04)
+
+Direct instrumented calls (reading Groq `usage`) on the two errored cases at
+max_completion_tokens=5000:
+
+- g05 x3: all returned content (was empty at 4096). Reasoning tokens 4118 /
+  4090 / 4526 - one run's reasoning alone EXCEEDED the old 4096 cap, which is
+  exactly why it returned empty at 4096 (reasoning consumed the whole budget,
+  nothing left for the answer).
+- g24 x2: both returned content (reasoning 3162 / 3564).
+- Prompt ~1868 tokens; reservation ~6868 (prompt + 5000), under the 8000 TPM
+  cap - zero 413s. The 429s seen late in the probe were cumulative rate/daily
+  limits from heavy same-day testing, not the token-size change.
+
+Fix kept: max_completion_tokens 4096 -> 5000. It fixes the empty tail (the 20B
+reasoning model needs up to ~4500 reasoning tokens) with no 413. Caveat:
+reservation is now ~86% of TPM, so throttling stays necessary and the occasional
+429 is possible (now recorded as errored, not fatal). Cleaner long-term fix:
+lower reasoning_effort so the model does not spend 3000-4500 tokens reasoning
+about a ranking - reduces both empties and TPM pressure. Deferred.

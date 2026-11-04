@@ -1,0 +1,340 @@
+{
+  "config": {
+    "suite": "golden",
+    "repeats": 1,
+    "delay_seconds": 60.0,
+    "golden_path": "tests/eval/golden_set.yaml",
+    "pairwise_path": "tests/eval/pairwise_set.yaml",
+    "weather_pairwise_path": "tests/eval/weather_pairwise_set.yaml",
+    "wardrobe_path": "docs/wardrobe.json",
+    "groq_model": "openai/gpt-oss-20b",
+    "judge_model": "openai/gpt-oss-120b",
+    "started_at": "2026-11-04T21:00:05.123169+00:00",
+    "finished_at": "2026-11-04T21:33:46.637733+00:00"
+  },
+  "golden": [
+    {
+      "passed": [
+        "g01",
+        "g06",
+        "g07",
+        "g08",
+        "g09",
+        "g11",
+        "g03",
+        "g17",
+        "g19",
+        "g25",
+        "g26",
+        "g29"
+      ],
+      "failed": [],
+      "inapplicable": [
+        {
+          "id": "g15",
+          "kind": "missing_combination",
+          "reason": "items present but no candidate outfit contains the combination ['t7', 'b5', 'l1']"
+        },
+        {
+          "id": "g16",
+          "kind": "missing_combination",
+          "reason": "items present but no candidate outfit contains the combination ['t1', 'l2']"
+        }
+      ],
+      "errored": [
+        {
+          "id": "g05",
+          "error": "ValueError('Model response was empty.')"
+        },
+        {
+          "id": "g24",
+          "error": "ValueError('Model response was empty.')"
+        }
+      ],
+      "behavioral_pending": [
+        {
+          "id": "g10",
+          "occasion": "going to a nightclub with friends",
+          "notes": "Tests permissive nightlife guidance, tank top should be viable, not just excluded by default.",
+          "judge_question": null,
+          "expectation": {
+            "combination_appears_ranked": [
+              "t1"
+            ]
+          },
+          "top_outfit": [
+            "t3",
+            "b2",
+            "l5"
+          ],
+          "top_reasoning": "The layered grey turtleneck under a chunky knit sweater over dark jeans creates a cohesive, stylish look suitable for a nightclub."
+        },
+        {
+          "id": "g02",
+          "occasion": "team happy hour, casual bar",
+          "notes": "Tests whether layering guidance is actually applied, not just known.",
+          "judge_question": null,
+          "expectation": {
+            "combination_appears_ranked": [
+              "t1",
+              "l1"
+            ]
+          },
+          "top_outfit": [
+            "t7",
+            "b4",
+            "l1"
+          ],
+          "top_reasoning": "The graphic tee pairs with wide\u2011leg trousers and a structured blazer for a polished yet playful smart\u2011casual look."
+        },
+        {
+          "id": "g12",
+          "occasion": "work happy hour, want to look put together but relaxed",
+          "notes": "Tests Soft Layers guidance, cardigan should meaningfully elevate without needing a blazer.",
+          "judge_question": null,
+          "expectation": {
+            "combination_appears_ranked": [
+              "t3",
+              "l2"
+            ]
+          },
+          "top_outfit": [
+            "t2",
+            "b1",
+            "l3"
+          ],
+          "top_reasoning": "The silk blouse, tailored trousers, and trench coat create a polished yet relaxed smart\u2011casual look."
+        },
+        {
+          "id": "g13",
+          "occasion": "dressing up a plain top for a client meeting",
+          "notes": "Structured-layer elevation paired directly with a professional occasion.",
+          "judge_question": null,
+          "expectation": {
+            "combination_appears_ranked": [
+              "t4",
+              "l1"
+            ]
+          },
+          "top_outfit": [
+            "t2",
+            "b1",
+            "l3",
+            "a1"
+          ],
+          "top_reasoning": "The silk blouse, tailored trousers, trench coat, and scarf combine into a polished, structured look that meets client\u2011meeting expectations."
+        },
+        {
+          "id": "g14",
+          "occasion": "dinner date, upscale restaurant",
+          "notes": "Tests Coverage Through Layering + Sleeveless and Base Tops together.",
+          "judge_question": null,
+          "expectation": {
+            "combination_appears_ranked": [
+              "t5",
+              "l1"
+            ]
+          },
+          "top_outfit": [
+            "t2",
+            "b1",
+            "l3",
+            "a1"
+          ],
+          "top_reasoning": "The silk blouse, tailored trousers, trench coat, and scarf combine into a polished, refined look suitable for an upscale dinner."
+        },
+        {
+          "id": "g18",
+          "occasion": "lazy Sunday coffee run and errands",
+          "notes": "Relaxed denim should be viable for a genuinely casual outing - confirms the model doesn't over-penalise b5 everywhere. With g05 (clean denim preferred for polished-casual) and g19 (relaxed denim excluded for business casual), this completes a three-point denim-range probe.",
+          "judge_question": null,
+          "expectation": {
+            "combination_appears_ranked": [
+              "b5"
+            ]
+          },
+          "top_outfit": [
+            "t3",
+            "b2",
+            "l5"
+          ],
+          "top_reasoning": "The grey ribbed turtleneck under a chunky knit sweater paired with clean dark wash jeans creates a polished yet comfortable smart\u2011casual look ideal for errands."
+        },
+        {
+          "id": "g20",
+          "occasion": "smart casual lunch date",
+          "notes": "Tests Sleeveless and Base Tops, refined sleeveless top should be viable without a forced layer.",
+          "judge_question": null,
+          "expectation": {
+            "combination_appears_ranked": [
+              "t5"
+            ]
+          },
+          "top_outfit": [
+            "t2",
+            "b1",
+            "l3",
+            "a1"
+          ],
+          "top_reasoning": "Silk blouse, tailored trousers, trench coat, and scarf together create a polished smart\u2011casual look that feels intentional and refined for a lunch date."
+        },
+        {
+          "id": "g04",
+          "occasion": "black-tie gala",
+          "notes": "Wardrobe has no eveningwear; should surface the limitation, not fake it.",
+          "judge_question": null,
+          "expectation": {
+            "reasoning_flags_gap": true
+          },
+          "top_outfit": [
+            "t2",
+            "b1",
+            "l3"
+          ],
+          "top_reasoning": "This outfit is the most formal of the options but still falls short of black-tie."
+        },
+        {
+          "id": "g21",
+          "occasion": "attending a formal black-tie wedding",
+          "notes": "Second gap case with different phrasing than g04, tests generalization beyond exact wording.",
+          "judge_question": null,
+          "expectation": {
+            "reasoning_flags_gap": true
+          },
+          "top_outfit": [
+            "t2",
+            "b1",
+            "l3"
+          ],
+          "top_reasoning": "The silk blouse and tailored trousers are formal, but the trench coat is not appropriate for black\u2011tie."
+        },
+        {
+          "id": "g22",
+          "occasion": "team happy hour, casual bar",
+          "notes": null,
+          "judge_question": "Does the top-ranked outfit show thoughtful color cohesion rather than an arbitrary pairing?",
+          "expectation": null,
+          "top_outfit": [
+            "t5",
+            "b4",
+            "l5"
+          ],
+          "top_reasoning": "The cream blouse, camel wide\u2011leg trousers, and chunky knit sweater combine to create a polished yet relaxed smart\u2011casual look suitable for a team happy hour.",
+          "verdict": {
+            "passed": true,
+            "score": 3,
+            "rationale": "The cream and camel tones form a neutral, related palette, but the stylist's reasoning does not explicitly reference this color strategy, making the outfit acceptable but unremarkable."
+          }
+        },
+        {
+          "id": "g23",
+          "occasion": "dinner date, upscale restaurant",
+          "notes": null,
+          "judge_question": "Does the top-ranked outfit's palette read as intentional and elevated, not mismatched?",
+          "expectation": null,
+          "top_outfit": [
+            "t2",
+            "b1",
+            "l3",
+            "a1"
+          ],
+          "top_reasoning": "The silk blouse, tailored trousers, trench coat, and scarf combine to create a polished, sophisticated look suitable for an upscale dinner.",
+          "verdict": {
+            "passed": true,
+            "score": 5,
+            "rationale": "The neutral palette of white silk, black trousers, camel trench, and grey scarf is intentional and creates a refined, tonal harmony that feels elevated and appropriate for an upscale dinner setting."
+          }
+        },
+        {
+          "id": "g27",
+          "occasion": "outdoor market trip",
+          "notes": "Rainy: rain jacket should be a viable top option (behavioral - may not be sampled).",
+          "judge_question": null,
+          "expectation": {
+            "combination_appears_ranked": [
+              "l4"
+            ]
+          },
+          "top_outfit": [
+            "t7",
+            "b5",
+            "l4",
+            "a1"
+          ],
+          "top_reasoning": "The grey oversized graphic tee, relaxed straight-leg denim, black rain jacket, and grey wool scarf combine to provide waterproof coverage, warmth, and a casual yet polished look suitable for a rainy market trip."
+        },
+        {
+          "id": "g28",
+          "occasion": "afternoon by the waterfront",
+          "notes": "Windy: a loose sleeveless-blouse + flowing-skirt pair should arguably not top a windy waterfront. Behavioral (collected) - wind expectations are fuzzy; review before asserting.",
+          "judge_question": null,
+          "expectation": {
+            "combination_not_top_rank": [
+              "t5",
+              "b3"
+            ]
+          },
+          "top_outfit": [
+            "t2",
+            "b1",
+            "l3",
+            "a1"
+          ],
+          "top_reasoning": "The white silk button\u2011down (t2) paired with black tailored trousers (b1) and a camel wool trench coat (l3) creates a polished smart\u2011casual look, and the grey wool scarf (a1) adds warmth and wind protection."
+        },
+        {
+          "id": "g30",
+          "occasion": "weekend walk around the city",
+          "notes": "No-weather control: same occasion as g25 but no weather block. Collected to compare the no-weather top pick against the cold (g25) one; not an auto-pass.",
+          "judge_question": null,
+          "expectation": {
+            "combination_not_top_rank": [
+              "t5"
+            ]
+          },
+          "top_outfit": [
+            "t3",
+            "b2",
+            "l5"
+          ],
+          "top_reasoning": "The grey ribbed turtleneck, dark wash straight-leg jeans, and chunky knit sweater combine for a layered, comfortable look ideal for a city walk."
+        }
+      ],
+      "constraint_violations": [],
+      "coverage": {
+        "ranking_total": 14,
+        "applicable": 12,
+        "inapplicable": 2,
+        "passed": 12,
+        "failed": 0,
+        "pass_rate_applicable": 1.0,
+        "applicable_coverage": 0.8571428571428571,
+        "by_category": {
+          "occasion_mapping": {
+            "passed": 6,
+            "failed": 0,
+            "inapplicable": 0
+          },
+          "layering_failure": {
+            "passed": 2,
+            "failed": 0,
+            "inapplicable": 2
+          },
+          "garment_denim": {
+            "passed": 1,
+            "failed": 0,
+            "inapplicable": 0
+          },
+          "weather": {
+            "passed": 3,
+            "failed": 0,
+            "inapplicable": 0
+          }
+        }
+      }
+    }
+  ],
+  "pairwise": [],
+  "weather_pairwise": [],
+  "errors": []
+}

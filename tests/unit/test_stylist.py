@@ -5,8 +5,8 @@ import pytest
 from closetgraph.models import OutfitCandidate, RankedOutfit
 from closetgraph.stylist import (
     _extract_json_array,
+    _format_candidates,
     _parse_ranked_outfits,
-    _resolve_candidates,
     rank_outfits,
 )
 
@@ -51,20 +51,15 @@ class FakeGroq:
         self.chat = FakeChat(self.completions)
 
 
-def test_resolve_candidates_replaces_ids_with_full_items(sample_wardrobe):
+def test_format_candidates_produces_compact_lines(sample_wardrobe):
     candidates = [OutfitCandidate(items=["t2", "b1", "l1"])]
 
-    resolved = _resolve_candidates(candidates, sample_wardrobe)
+    formatted = _format_candidates(candidates, sample_wardrobe)
 
-    assert resolved == [
-        {
-            "items": [
-                {"id": "t2", "name": "white silk blouse", "category": "top"},
-                {"id": "b1", "name": "black tailored trousers", "category": "bottom"},
-                {"id": "l1", "name": "black structured blazer", "category": "layering"},
-            ]
-        }
-    ]
+    assert formatted == (
+        "1. t2 (white silk blouse, top) + b1 (black tailored trousers, bottom) "
+        "+ l1 (black structured blazer, layering)"
+    )
 
 
 @pytest.mark.parametrize(
@@ -126,6 +121,31 @@ def test_rank_outfits_uses_groq_response(monkeypatch, sample_wardrobe):
     assert ranked[0].items == ["t2", "b1", "l1"]
     assert completions.calls[0]["model"] == "test-model"
     assert "white silk blouse" in completions.calls[0]["messages"][0]["content"]
+    # No weather provided -> prompt says so, not a fabricated condition.
+    assert "Weather: none provided" in completions.calls[0]["messages"][0]["content"]
+
+
+def test_rank_outfits_includes_weather_in_prompt_when_provided(monkeypatch, sample_wardrobe):
+    from closetgraph.models import WeatherContext
+
+    completions = FakeCompletions(
+        [json.dumps([{"rank": 1, "items": ["t2", "b1"], "reasoning": "ok"}])]
+    )
+    FakeGroq.completions = completions
+    monkeypatch.setattr("closetgraph.stylist.Groq", FakeGroq)
+
+    rank_outfits(
+        [OutfitCandidate(items=["t2", "b1"])],
+        sample_wardrobe,
+        "client meeting",
+        weather_context=WeatherContext(
+            temperature_c=3, condition="rainy", sources={"temperature_c": "user"}
+        ),
+    )
+
+    prompt = completions.calls[0]["messages"][0]["content"]
+    assert "3 degrees celsius" in prompt
+    assert "rainy" in prompt
 
 
 def test_rank_outfits_retries_after_invalid_json(monkeypatch, sample_wardrobe):

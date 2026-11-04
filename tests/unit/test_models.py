@@ -11,10 +11,13 @@ def test_wardrobe_item_accepts_supported_categories():
     assert item.name == "black tank top"
     assert item.category == "top"
 
+    accessory = WardrobeItem(id="a1", name="grey wool scarf", category="accessory")
+    assert accessory.category == "accessory"
+
 
 def test_wardrobe_item_rejects_unknown_category():
     with pytest.raises(ValidationError):
-        WardrobeItem(id="x1", name="red scarf", category="accessory")
+        WardrobeItem(id="x1", name="leather boots", category="footwear")
 
 
 def test_outfit_candidate_stores_item_ids():
