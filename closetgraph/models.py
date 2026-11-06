@@ -39,6 +39,17 @@ class WeatherContext(BaseModel):
     sources: dict[str, str]
 
 
+class ResearchContext(BaseModel):
+    """Background on an unfamiliar occasion/venue/dress code, distilled by the
+    research agent into styling-relevant constraints, with provenance."""
+
+    query: str  # what was looked up
+    summary: str  # styling-relevant constraints distilled from the source
+    inferred_formality: str | None = None  # e.g. "formal / black-tie", if clear
+    source_title: str | None = None
+    source_url: str | None = None
+
+
 class ClosetGraphState(TypedDict):
     wardrobe: list[WardrobeItem]
     occasion: str
@@ -50,4 +61,9 @@ class ClosetGraphState(TypedDict):
     weather_context: WeatherContext | None  # resolved weather actually used, or None
     weather_relevant: bool  # whether the occasion/request warrants weather
     weather_error: str | None  # set when a lookup failed, so the failure is observable
+    # Stage 4 research (all optional):
+    research_needed: bool  # supervisor's routing decision
+    research_query: str | None  # what the supervisor chose to look up
+    research_context: ResearchContext | None  # resolved research actually used, or None
+    research_error: str | None  # set when a lookup/summary failed, so it is observable
 
