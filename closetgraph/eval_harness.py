@@ -73,8 +73,22 @@ def run_routing_set(
     passed = sum(1 for r in results if r["passed"])
     total = len(results)
     accuracy = passed / total if total else None
+    # False positive: predicted research when the label says skip. False
+    # negative: predicted skip when the label says research.
+    false_positives = [
+        r["id"] for r in results if r["actual_research"] and not r["expected_research"]
+    ]
+    false_negatives = [
+        r["id"] for r in results if not r["actual_research"] and r["expected_research"]
+    ]
     acc = f"{accuracy:.0%}" if total else "n/a"
     print(f"routing decisions: {passed}/{total} correct ({acc})")
+    print(
+        f"  false positives (researched a skip): {len(false_positives)} {false_positives}"
+    )
+    print(
+        f"  false negatives (skipped a research): {len(false_negatives)} {false_negatives}"
+    )
 
     reason_quality = None
     judged = [r for r in results if "reason_verdict" in r]
@@ -87,6 +101,8 @@ def run_routing_set(
         "accuracy": accuracy,
         "passed": passed,
         "total": total,
+        "false_positives": false_positives,
+        "false_negatives": false_negatives,
         "reason_quality": reason_quality,
         "cases": results,
     }

@@ -56,6 +56,10 @@ def main() -> None:
         "--weather-pairwise-path", default="tests/eval/weather_pairwise_set.yaml"
     )
     parser.add_argument("--routing-path", default="tests/eval/routing_set.yaml")
+    parser.add_argument(
+        "--judge-reasons", action="store_true",
+        help="for the routing suite, also LLM-judge the quality of each routing reason",
+    )
     parser.add_argument("--wardrobe-path", default="docs/wardrobe.json")
     parser.add_argument(
         "--out", default=None,
@@ -116,7 +120,9 @@ def main() -> None:
 
     if args.suite in ("routing", "all"):
         try:
-            report["routing"] = run_routing_set(args.routing_path, delay_seconds=args.delay)
+            report["routing"] = run_routing_set(
+                args.routing_path, delay_seconds=args.delay, judge_reasons=args.judge_reasons
+            )
         except Exception as error:
             report["errors"].append({"suite": "routing", "error": repr(error)})
             print(f"routing failed: {error!r}")

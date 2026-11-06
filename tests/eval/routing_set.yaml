@@ -1,13 +1,16 @@
-# Supervisor routing labels (DRAFT - review expected_research and reasons).
+# Supervisor routing labels (benchmark - set independently, by principle).
 #
 # Evaluates the supervisor in ISOLATION: run supervise(occasion) only, no
 # research agent and no stylist. expected_research is the label; reason is the
 # human rationale. The deterministic skip handles the plain familiar cases; the
 # rest defer to the LLM classifier, so those outcomes are measured, not fixed.
-# The core principle under test: research is warranted only when a specific
-# dress code cannot be inferred, NOT merely because a venue name is unfamiliar.
+#
+# Governing principle: research is warranted ONLY when external information could
+# resolve a CONCRETE attire uncertainty that MATERIALLY changes styling. An
+# occasion sounding unfamiliar, cultural, or themed is NOT by itself enough if
+# the attire is broadly inferable from general knowledge.
 
-# Familiar occasions, dress code inferable -> skip
+# Familiar occasions, attire inferable -> skip
 - id: r01
   occasion: "first client meeting, conservative office"
   expected_research: false
@@ -41,11 +44,11 @@
   expected_research: false
   reason: "no dress code"
 
-# Unfamiliar venue NAME but no specific dress code -> skip
+# Unfamiliar venue NAME but no special attire -> skip
 - id: r09
   occasion: "coffee at Blumen Cafe"
   expected_research: false
-  reason: "a cafe has no strict dress code even though the name is unknown"
+  reason: "a cafe has no special attire even though the name is unknown"
 - id: r10
   occasion: "picnic at Griffith Park"
   expected_research: false
@@ -57,51 +60,74 @@
 - id: r12
   occasion: "browsing a weekend street market"
   expected_research: false
-  reason: "casual outdoor, no dress code"
+  reason: "casual outdoor, no special attire"
 
-# Named venue/event/activity with attire NOT inferable (any formality) -> research
+# Cultural/themed but attire broadly inferable -> skip (negative examples:
+# unfamiliarity or a theme alone does not justify research)
+- id: r17
+  occasion: "a masquerade ball"
+  expected_research: false
+  reason: "masquerade attire is broadly inferable (formal plus a mask); no concrete uncertainty"
+- id: r18
+  occasion: "a Dia de los Muertos celebration"
+  expected_research: false
+  reason: "guest attire is broadly inferable; cultural specificity alone is not enough"
+- id: r19
+  occasion: "a Renaissance faire in costume"
+  expected_research: false
+  reason: "already in costume and the theme's attire is broadly known"
+- id: r20
+  occasion: "a quinceanera"
+  expected_research: false
+  reason: "guest attire (semi-formal to formal) is broadly inferable"
+- id: r21
+  occasion: "spectating at a polo match"
+  expected_research: false
+  reason: "polo spectating is broadly inferable smart-casual; no concrete uncertainty"
+
+# Concrete attire uncertainty resolvable by research -> research
 - id: r13
   occasion: "dinner at a members-only supper club with a dress code"
   expected_research: true
-  reason: "a stated club dress code must be looked up"
+  reason: "a stated but unspecified club dress code must be looked up"
 - id: r14
-  occasion: "charity gala at the Met"
+  occasion: "the Met Gala"
   expected_research: true
-  reason: "a gala carries a specific, often formal dress code"
+  reason: "the Met Gala's annual theme materially changes styling and is only knowable by lookup"
 - id: r15
   occasion: "what to wear to a hunt ball"
   expected_research: true
-  reason: "hunt ball attire is a specific, uncommon code"
+  reason: "hunt ball attire is a specific, uncommon code that resolves concrete uncertainty"
 - id: r16
-  occasion: "a day at Royal Ascot"
+  occasion: "the Royal Enclosure at Royal Ascot"
   expected_research: true
-  reason: "Royal Ascot enforces a published dress code"
-- id: r17
-  occasion: "a masquerade ball"
-  expected_research: true
-  reason: "a themed ball implies specific, non-obvious attire"
-- id: r18
-  occasion: "Dia de los Muertos celebration"
-  expected_research: true
-  reason: "cultural event with particular dress expectations (not about formality)"
-- id: r19
-  occasion: "a Renaissance faire in costume"
-  expected_research: true
-  reason: "themed/costume expectations are not general knowledge"
-- id: r20
-  occasion: "a quinceanera"
-  expected_research: true
-  reason: "cultural celebration with specific dress norms"
-- id: r21
-  occasion: "spectating at a polo match"
-  expected_research: true
-  reason: "activity-specific attire; smart but with particular norms, not inferable"
+  reason: "Royal Ascot's Royal Enclosure has a published, strict dress code (hats, hemlines)"
 - id: r22
-  occasion: "a day sailing with a yacht club crew"
+  occasion: "a formal dinner at the Corinthian Yacht Club in club rig"
   expected_research: true
-  reason: "activity/venue attire (nautical, club norms) is specific, not strictly formal"
+  reason: "'club rig' is a specific nautical formal code that lookup resolves"
+- id: r25
+  occasion: "the Stewards' Enclosure at the Henley Royal Regatta"
+  expected_research: true
+  reason: "Henley publishes a strict enclosure dress code (jackets/ties, skirt length)"
+- id: r26
+  occasion: "a wedding with a stated 'beach formal' dress code"
+  expected_research: true
+  reason: "'beach formal' is a specific, less-common code whose interpretation changes styling"
+- id: r27
+  occasion: "the Clubhouse at the Kentucky Derby"
+  expected_research: true
+  reason: "Derby Clubhouse has specific attire norms (and differs materially from the infield)"
+- id: r28
+  occasion: "dinner at a restaurant with a 'smart elegant' dress code"
+  expected_research: true
+  reason: "'smart elegant' is a specific European code that is ambiguous without lookup"
+- id: r29
+  occasion: "a 'Roaring Twenties' themed party with a stated 1920s dress code"
+  expected_research: true
+  reason: "a specific era dress code materially changes styling and warrants confirming specifics"
 
-# Ambiguous edges, labeled as skip (inferable)
+# Ambiguous edges, labeled skip (inferable)
 - id: r23
   occasion: "networking mixer at a tech startup"
   expected_research: false
