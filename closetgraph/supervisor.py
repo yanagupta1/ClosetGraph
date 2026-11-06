@@ -1,0 +1,125 @@
+"""Supervisor: decide whether an occasion needs external research.
+
+Hybrid routing. A deterministic fast-path skips research (no LLM call) only when
+the occasion clearly matches a dress code our style corpus already covers AND
+shows no other sign of an unfamiliar venue or event. Everything else falls
+through to a cheap LLM classifier. Deciding relevance here is a knowledge-gap
+judgment, which is why an LLM is justified in this role (unlike weather gating).
+"""
+import json
+import logging
+import os
+
+from dotenv import load_dotenv
+from groq import Groq
+from langfuse import observe
+
+from closetgraph.research import _extract_json_object
+
+logger = logging.getLogger(__name__)
+
+# Dress codes / occasion types the style corpus covers; a plain match here is a
+# candidate for the deterministic skip.
+_COVERED_DRESS_CODES = (
+    "casual",
+    "smart casual",
+    "business casual",
+    "business",
+    "professional",
+    "office",
+    "interview",
+    "client meeting",
+    "cocktail",
+    "semi-formal",
+    "formal",
+    "black tie",
+    "black-tie",
+    "brunch",
+    "lunch",
+    "dinner",
+    "date",
+    "errands",
+    "happy hour",
+    "bar",
+    "nightclub",
+)
+
+# Signals that something specific/unfamiliar may be involved, so do not skip even
+# if a familiar dress code also appears (e.g. "cocktail party at the Met Gala").
+_ESCALATION_MARKERS = (
+    "gala",
+    "ball",
+    "masquerade",
+    "themed",
+    "theme party",
+    "white tie",
+    "white-tie",
+    "regatta",
+    "derby",
+    "debutante",
+    "quinceanera",
+    "quinceañera",
+    "mitzvah",
+    "premiere",
+    "benefit",
+    "garden party",
+    "costume",
+)
+
+SUPERVISOR_PROMPT_TEMPLATE = """You decide whether an outfit request needs a quick external lookup. Research is needed ONLY if the occasion references a venue, event, or dress code whose expected formality is not obvious from general knowledge. Common occasions (office, dinner, casual, cocktail, black tie) do NOT need research.
+
+Occasion: {occasion}
+
+Return ONLY a single JSON object, no markdown:
+{{"research_needed": true or false, "research_query": "<the concise thing to look up, e.g. the dress code or venue name, or null>"}}
+"""
+
+
+def _has_research_signal(occasion: str) -> bool:
+    lower = occasion.lower()
+    if any(marker in lower for marker in _ESCALATION_MARKERS):
+        return True
+    # A capitalized word after the first token suggests a named venue/event.
+    for word in occasion.split()[1:]:
+        if word[:1].isupper():
+            return True
+    return False
+
+
+def _llm_classify(occasion: str) -> dict:
+    load_dotenv()
+    model = os.getenv("SUPERVISOR_MODEL", os.getenv("GROQ_MODEL", "openai/gpt-oss-20b"))
+    try:
+        response = Groq().chat.completions.create(
+            model=model,
+            messages=[
+                {"role": "user", "content": SUPERVISOR_PROMPT_TEMPLATE.format(occasion=occasion)}
+            ],
+            temperature=0,
+            max_completion_tokens=1000,
+        )
+        data = json.loads(_extract_json_object(response.choices[0].message.content))
+    except Exception as error:  # fail safe: on classifier failure, do not research
+        logger.warning("supervisor classifier failed for %r: %r", occasion, error)
+        return {"research_needed": False, "research_query": None}
+    needed = bool(data.get("research_needed"))
+    query = data.get("research_query") if needed else None
+    if query in ("null", ""):
+        query = None
+    return {"research_needed": needed, "research_query": query}
+
+
+@observe()
+def supervise(occasion: str, classifier=None) -> dict:
+    """
+    Decide research routing for an occasion, returning
+    {"research_needed": bool, "research_query": str|None}.
+
+    Deterministic skip when the occasion matches a covered dress code and shows
+    no other research signal; otherwise defer to the LLM classifier.
+    """
+    lower = occasion.lower()
+    covered = any(dc in lower for dc in _COVERED_DRESS_CODES)
+    if covered and not _has_research_signal(occasion):
+        return {"research_needed": False, "research_query": None}
+    return (classifier or _llm_classify)(occasion)
