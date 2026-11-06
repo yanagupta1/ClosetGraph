@@ -66,14 +66,16 @@ _ESCALATION_MARKERS = (
     "costume",
 )
 
-SUPERVISOR_PROMPT_TEMPLATE = """You decide whether an outfit request needs a quick external lookup about its DRESS CODE. Research is needed ONLY when the occasion implies a specific dress code or expected formality that you cannot infer from general knowledge.
+SUPERVISOR_PROMPT_TEMPLATE = """You decide whether an outfit request needs a quick external lookup about its ATTIRE EXPECTATIONS. Research is needed ONLY when the occasion implies specific attire you cannot infer from general knowledge.
 
-Key rule: an unfamiliar venue NAME is not by itself a reason to research. A cafe, park, bar, or casual restaurant has no strict dress code even if its name is unknown, so no research is needed. Research only when a named venue or event likely carries a particular dress code you cannot determine, for example a members-only club, a gala or ball, a themed event, or a fine-dining room with a stated code. Common occasions (office, dinner, casual, cocktail, black tie) do NOT need research.
+This is NOT limited to formal events. Attire can be non-inferable at any formality: venue-specific codes (a members-only club, a rooftop lounge that bars athletic wear), activity-specific attire (a polo match, a sailing regatta, a theme park), and cultural or themed dress (a quinceanera, Dia de los Muertos, a costume faire). Any of these may need research even if not "formal".
+
+Key rule: an unfamiliar venue NAME is not by itself a reason to research. A cafe, park, bar, or casual restaurant has no special attire expectations even if its name is unknown, so no research is needed. Common occasions (office, dinner, casual, cocktail, black tie) do NOT need research, their attire is already well understood.
 
 Occasion: {occasion}
 
 Return ONLY a single JSON object, no markdown:
-{{"research_needed": true or false, "research_query": "<the dress code or venue to look up, or null>", "research_reason": "<one short clause: what is uncertain about the dress code and why, or why no research is needed>"}}
+{{"research_needed": true or false, "research_query": "<the dress code, venue, or event to look up, or null>", "research_reason": "<one short clause: what specific attire is uncertain and why, or why no research is needed>"}}
 """
 
 

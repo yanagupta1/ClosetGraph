@@ -4,7 +4,7 @@ import time
 import yaml
 
 from closetgraph.graph import build_graph
-from closetgraph.judge import judge_outfit
+from closetgraph.judge import judge_outfit, judge_routing_reason
 from closetgraph.models import (
     OutfitCandidate,
     WardrobeItem,
@@ -13,7 +13,83 @@ from closetgraph.models import (
 )
 from closetgraph.retrieval import retrieve_style_guidance
 from closetgraph.stylist import rank_outfits
+from closetgraph.supervisor import supervise
 from closetgraph.validity import validate_ranked_outfits
+
+
+def run_routing_set(
+    routing_set_path, delay_seconds: float = 0, judge_reasons: bool = False
+) -> dict:
+    """
+    Evaluate the supervisor in isolation: run supervise(occasion) only, with no
+    research agent and no stylist, and compare its routing to the labels.
+
+    Reports two things separately: decision accuracy (routing matches the label)
+    and, when judge_reasons is set, reason quality (an LLM judges whether the
+    supervisor's stated reason is a specific, correct justification, not just the
+    yes/no). Deterministic skips are reproducible; classifier and judge cases
+    make LLM calls (throttle with delay_seconds).
+    """
+    with open(routing_set_path, encoding="utf-8") as handle:
+        cases = yaml.safe_load(handle)
+
+    results = []
+    first = True
+    for case in cases:
+        if delay_seconds and not first:
+            time.sleep(delay_seconds)
+        first = False
+        decision = supervise(case["occasion"])
+        passed = decision["research_needed"] == case["expected_research"]
+        record = {
+            "id": case["id"],
+            "occasion": case["occasion"],
+            "expected_research": case["expected_research"],
+            "actual_research": decision["research_needed"],
+            "passed": passed,
+            "label_reason": case.get("reason"),
+            "supervisor_reason": decision.get("research_reason"),
+            "research_query": decision.get("research_query"),
+        }
+        if judge_reasons:
+            if delay_seconds:
+                time.sleep(delay_seconds)
+            try:
+                verdict = judge_routing_reason(
+                    case["occasion"],
+                    "research" if decision["research_needed"] else "skip",
+                    decision.get("research_reason"),
+                )
+                record["reason_verdict"] = verdict.model_dump()
+            except Exception as error:
+                record["reason_judge_error"] = str(error)
+        results.append(record)
+        if not passed:
+            print(
+                f"  MISMATCH {case['id']}: expected {case['expected_research']}, "
+                f"got {decision['research_needed']} :: {case['occasion']}"
+            )
+
+    passed = sum(1 for r in results if r["passed"])
+    total = len(results)
+    accuracy = passed / total if total else None
+    acc = f"{accuracy:.0%}" if total else "n/a"
+    print(f"routing decisions: {passed}/{total} correct ({acc})")
+
+    reason_quality = None
+    judged = [r for r in results if "reason_verdict" in r]
+    if judged:
+        good = sum(1 for r in judged if r["reason_verdict"]["passed"])
+        reason_quality = {"passed": good, "judged": len(judged)}
+        print(f"routing reasons: {good}/{len(judged)} judged adequate")
+
+    return {
+        "accuracy": accuracy,
+        "passed": passed,
+        "total": total,
+        "reason_quality": reason_quality,
+        "cases": results,
+    }
 
 
 def _weather_input_from_entry(entry):

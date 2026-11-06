@@ -421,6 +421,65 @@ def test_weather_pairwise_flags_garment_inconsistency_without_failing_ranking(mo
     assert "blazer" in result["conditions"][0]["reasoning_offenders"]
 
 
+def test_run_routing_set_scores_against_labels(tmp_path, monkeypatch):
+    cases = [
+        {"id": "r1", "occasion": "office", "expected_research": False, "reason": "known"},
+        {"id": "r2", "occasion": "hunt ball", "expected_research": True, "reason": "uncommon"},
+        {"id": "r3", "occasion": "gala", "expected_research": True, "reason": "formal"},
+    ]
+    path = tmp_path / "routing.yaml"
+    path.write_text(yaml.safe_dump(cases), encoding="utf-8")
+
+    # Stub supervise: correct on r1/r2, wrong on r3 (says skip) -> 2/3.
+    def fake_supervise(occasion):
+        needed = occasion in ("hunt ball",)
+        return {"research_needed": needed, "research_query": None, "research_reason": "x"}
+
+    monkeypatch.setattr(eval_harness, "supervise", fake_supervise)
+
+    result = eval_harness.run_routing_set(str(path))
+
+    assert result["total"] == 3
+    assert result["passed"] == 2
+    assert result["accuracy"] == 2 / 3
+    assert result["reason_quality"] is None  # not judged unless requested
+    wrong = [c for c in result["cases"] if not c["passed"]]
+    assert [c["id"] for c in wrong] == ["r3"]
+
+
+def test_run_routing_set_judges_reason_quality_when_requested(tmp_path, monkeypatch):
+    from closetgraph.judge import JudgeVerdict
+
+    cases = [
+        {"id": "r1", "occasion": "office", "expected_research": False, "reason": "known"},
+        {"id": "r2", "occasion": "hunt ball", "expected_research": True, "reason": "uncommon"},
+    ]
+    path = tmp_path / "routing.yaml"
+    path.write_text(yaml.safe_dump(cases), encoding="utf-8")
+
+    monkeypatch.setattr(
+        eval_harness,
+        "supervise",
+        lambda occasion: {
+            "research_needed": occasion == "hunt ball",
+            "research_query": None,
+            "research_reason": "a specific reason",
+        },
+    )
+    monkeypatch.setattr(
+        eval_harness,
+        "judge_routing_reason",
+        lambda occasion, decision, reason: JudgeVerdict(
+            passed=True, score=4, rationale="specific and correct"
+        ),
+    )
+
+    result = eval_harness.run_routing_set(str(path), judge_reasons=True)
+
+    assert result["reason_quality"] == {"passed": 2, "judged": 2}
+    assert all("reason_verdict" in c for c in result["cases"])
+
+
 def test_check_reasoning_garments_detects_absent_garment():
     wardrobe = _wx_wardrobe_items()
     # outfit has the trench but reasoning mentions a blazer (present in wardrobe,

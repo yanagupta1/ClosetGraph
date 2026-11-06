@@ -1,0 +1,112 @@
+# Supervisor routing labels (DRAFT - review expected_research and reasons).
+#
+# Evaluates the supervisor in ISOLATION: run supervise(occasion) only, no
+# research agent and no stylist. expected_research is the label; reason is the
+# human rationale. The deterministic skip handles the plain familiar cases; the
+# rest defer to the LLM classifier, so those outcomes are measured, not fixed.
+# The core principle under test: research is warranted only when a specific
+# dress code cannot be inferred, NOT merely because a venue name is unfamiliar.
+
+# Familiar occasions, dress code inferable -> skip
+- id: r01
+  occasion: "first client meeting, conservative office"
+  expected_research: false
+  reason: "business/professional is a known, inferable dress code"
+- id: r02
+  occasion: "casual weekend brunch with friends"
+  expected_research: false
+  reason: "plainly casual"
+- id: r03
+  occasion: "team happy hour at a bar"
+  expected_research: false
+  reason: "casual to smart-casual, inferable"
+- id: r04
+  occasion: "job interview at a law firm"
+  expected_research: false
+  reason: "interview formality is well understood"
+- id: r05
+  occasion: "dinner date at an upscale restaurant"
+  expected_research: false
+  reason: "upscale dinner implies smart/formal, inferable"
+- id: r06
+  occasion: "cocktail party at a friend's apartment"
+  expected_research: false
+  reason: "cocktail is a known dress code"
+- id: r07
+  occasion: "black-tie wedding"
+  expected_research: false
+  reason: "black tie is an explicitly known dress code"
+- id: r08
+  occasion: "running errands and grabbing coffee"
+  expected_research: false
+  reason: "no dress code"
+
+# Unfamiliar venue NAME but no specific dress code -> skip
+- id: r09
+  occasion: "coffee at Blumen Cafe"
+  expected_research: false
+  reason: "a cafe has no strict dress code even though the name is unknown"
+- id: r10
+  occasion: "picnic at Griffith Park"
+  expected_research: false
+  reason: "a park picnic is casual; the venue name is irrelevant"
+- id: r11
+  occasion: "lunch at some new bistro downtown"
+  expected_research: false
+  reason: "a bistro reads smart-casual, inferable"
+- id: r12
+  occasion: "browsing a weekend street market"
+  expected_research: false
+  reason: "casual outdoor, no dress code"
+
+# Named venue/event/activity with attire NOT inferable (any formality) -> research
+- id: r13
+  occasion: "dinner at a members-only supper club with a dress code"
+  expected_research: true
+  reason: "a stated club dress code must be looked up"
+- id: r14
+  occasion: "charity gala at the Met"
+  expected_research: true
+  reason: "a gala carries a specific, often formal dress code"
+- id: r15
+  occasion: "what to wear to a hunt ball"
+  expected_research: true
+  reason: "hunt ball attire is a specific, uncommon code"
+- id: r16
+  occasion: "a day at Royal Ascot"
+  expected_research: true
+  reason: "Royal Ascot enforces a published dress code"
+- id: r17
+  occasion: "a masquerade ball"
+  expected_research: true
+  reason: "a themed ball implies specific, non-obvious attire"
+- id: r18
+  occasion: "Dia de los Muertos celebration"
+  expected_research: true
+  reason: "cultural event with particular dress expectations (not about formality)"
+- id: r19
+  occasion: "a Renaissance faire in costume"
+  expected_research: true
+  reason: "themed/costume expectations are not general knowledge"
+- id: r20
+  occasion: "a quinceanera"
+  expected_research: true
+  reason: "cultural celebration with specific dress norms"
+- id: r21
+  occasion: "spectating at a polo match"
+  expected_research: true
+  reason: "activity-specific attire; smart but with particular norms, not inferable"
+- id: r22
+  occasion: "a day sailing with a yacht club crew"
+  expected_research: true
+  reason: "activity/venue attire (nautical, club norms) is specific, not strictly formal"
+
+# Ambiguous edges, labeled as skip (inferable)
+- id: r23
+  occasion: "networking mixer at a tech startup"
+  expected_research: false
+  reason: "business-casual, inferable"
+- id: r24
+  occasion: "rooftop birthday party"
+  expected_research: false
+  reason: "smart-casual social, inferable"
