@@ -148,6 +148,43 @@ def test_rank_outfits_includes_weather_in_prompt_when_provided(monkeypatch, samp
     assert "rainy" in prompt
 
 
+def test_rank_outfits_includes_research_in_prompt_when_provided(monkeypatch, sample_wardrobe):
+    from closetgraph.models import ResearchContext
+
+    completions = FakeCompletions(
+        [json.dumps([{"rank": 1, "items": ["t2", "b1"], "reasoning": "ok"}])]
+    )
+    FakeGroq.completions = completions
+    monkeypatch.setattr("closetgraph.stylist.Groq", FakeGroq)
+
+    rank_outfits(
+        [OutfitCandidate(items=["t2", "b1"])],
+        sample_wardrobe,
+        "hunt ball",
+        research_context=ResearchContext(
+            query="hunt ball attire",
+            summary="Formal evening dress is expected.",
+            inferred_formality="formal",
+        ),
+    )
+
+    prompt = completions.calls[0]["messages"][0]["content"]
+    assert "Formal evening dress is expected." in prompt
+    assert "expected formality: formal" in prompt
+
+
+def test_rank_outfits_research_none_marker_when_absent(monkeypatch, sample_wardrobe):
+    completions = FakeCompletions(
+        [json.dumps([{"rank": 1, "items": ["t2", "b1"], "reasoning": "ok"}])]
+    )
+    FakeGroq.completions = completions
+    monkeypatch.setattr("closetgraph.stylist.Groq", FakeGroq)
+
+    rank_outfits([OutfitCandidate(items=["t2", "b1"])], sample_wardrobe, "office")
+
+    assert "Researched context for this occasion: none" in completions.calls[0]["messages"][0]["content"]
+
+
 def test_rank_outfits_retries_after_invalid_json(monkeypatch, sample_wardrobe):
     completions = FakeCompletions(
         [
