@@ -66,11 +66,13 @@ _ESCALATION_MARKERS = (
     "costume",
 )
 
-SUPERVISOR_PROMPT_TEMPLATE = """You decide whether an outfit request needs a quick external lookup about its ATTIRE EXPECTATIONS. Research is needed ONLY when the occasion implies specific attire you cannot infer from general knowledge.
+SUPERVISOR_PROMPT_TEMPLATE = """You decide whether an outfit request needs a quick external lookup about its attire. Research is needed ONLY when external information would resolve a CONCRETE attire uncertainty that MATERIALLY changes what to wear.
 
-This is NOT limited to formal events. Attire can be non-inferable at any formality: venue-specific codes (a members-only club, a rooftop lounge that bars athletic wear), activity-specific attire (a polo match, a sailing regatta, a theme park), and cultural or themed dress (a quinceanera, Dia de los Muertos, a costume faire). Any of these may need research even if not "formal".
+Do NOT research just because an occasion sounds unfamiliar, cultural, themed, or activity-specific. Guest attire for a quinceanera, a Dia de los Muertos celebration, a masquerade ball, a Renaissance faire, or spectating a polo match is broadly inferable from general knowledge, so these do NOT need research. An unfamiliar venue NAME alone is never a reason (a cafe or park has no special attire even if unknown).
 
-Key rule: an unfamiliar venue NAME is not by itself a reason to research. A cafe, park, bar, or casual restaurant has no special attire expectations even if its name is unknown, so no research is needed. Common occasions (office, dinner, casual, cocktail, black tie) do NOT need research, their attire is already well understood.
+DO research when the occasion names or states a specific dress code whose meaning is not general knowledge, or a venue/event with a particular published code you cannot determine. Examples that DO need research: a stated 'beach formal', 'smart elegant', or 'club rig' code; a members-only club's stated-but-unspecified code; the Royal Enclosure at Royal Ascot; the Stewards' Enclosure at Henley.
+
+Common occasions (office, dinner, casual, cocktail, black tie) do NOT need research, their attire is already well understood.
 
 Occasion: {occasion}
 
@@ -81,9 +83,14 @@ Return ONLY a single JSON object, no markdown:
 
 def _has_research_signal(occasion: str) -> bool:
     """Signals that only DEFER the decision to the classifier, never force
-    research: an escalation marker, or a capitalized named venue/event. The
-    classifier then judges whether the dress code is actually inferable."""
+    research: an explicit stated dress code, an escalation marker, or a
+    capitalized named venue/event. The classifier then judges whether the attire
+    is actually inferable."""
     lower = occasion.lower()
+    # A stated code is a strong defer signal: a covered word like "dinner" must
+    # not short-circuit "dinner ... with a dress code".
+    if "dress code" in lower or "attire" in lower:
+        return True
     if any(marker in lower for marker in _ESCALATION_MARKERS):
         return True
     for word in occasion.split()[1:]:
@@ -102,7 +109,7 @@ def _llm_classify(occasion: str) -> dict:
                 {"role": "user", "content": SUPERVISOR_PROMPT_TEMPLATE.format(occasion=occasion)}
             ],
             temperature=0,
-            max_completion_tokens=1000,
+            max_completion_tokens=4000,
         )
         data = json.loads(_extract_json_object(response.choices[0].message.content))
     except Exception as error:  # fail safe: on classifier failure, do not research
