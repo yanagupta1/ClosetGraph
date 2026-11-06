@@ -64,6 +64,7 @@ class ClosetGraphState(TypedDict):
     # Stage 4 research (all optional):
     research_needed: bool  # supervisor's routing decision
     research_query: str | None  # what the supervisor chose to look up
+    research_reason: str | None  # why research was or was not needed (explainability)
     research_context: ResearchContext | None  # resolved research actually used, or None
     research_error: str | None  # set when a lookup/summary failed, so it is observable
 

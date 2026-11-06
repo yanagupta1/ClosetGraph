@@ -19,6 +19,7 @@ def supervisor_node(state: ClosetGraphState) -> ClosetGraphState:
     decision = supervise(state["occasion"])
     state["research_needed"] = decision["research_needed"]
     state["research_query"] = decision["research_query"]
+    state["research_reason"] = decision.get("research_reason")
     return state
 
 

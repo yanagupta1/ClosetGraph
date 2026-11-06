@@ -8,7 +8,24 @@ def _never_called(occasion):
 def test_familiar_plain_occasion_skips_research_without_llm():
     decision = supervise("first client meeting, conservative office", classifier=_never_called)
 
-    assert decision == {"research_needed": False, "research_query": None}
+    assert decision["research_needed"] is False
+    assert decision["research_query"] is None
+    assert decision["research_reason"]  # a reason is recorded for explainability
+
+
+def test_unfamiliar_venue_without_dress_code_is_not_researched():
+    # A named cafe: style guidance is enough; the classifier should decline research.
+    def classifier(occasion):
+        return {
+            "research_needed": False,
+            "research_query": None,
+            "research_reason": "a cafe has no specific dress code to look up",
+        }
+
+    decision = supervise("coffee at Blumen Cafe", classifier=classifier)
+
+    assert decision["research_needed"] is False
+    assert "cafe" in decision["research_reason"]
 
 
 def test_escalation_marker_defers_to_classifier():
