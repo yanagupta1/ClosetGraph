@@ -7,6 +7,7 @@ from closetgraph.graph import build_graph
 from closetgraph.judge import judge_outfit, judge_routing_reason
 from closetgraph.models import (
     OutfitCandidate,
+    ResearchContext,
     WardrobeItem,
     WeatherContext,
     WeatherInput,
@@ -415,17 +416,24 @@ def check_reasoning_garments(outfit_items, reasoning, wardrobe):
 
 
 def compare_pairwise(
-    outfit_a, outfit_b, occasion, wardrobe, retrieved_guidance=None, weather_context=None
+    outfit_a,
+    outfit_b,
+    occasion,
+    wardrobe,
+    retrieved_guidance=None,
+    weather_context=None,
+    research_context=None,
 ):
     """
     Compare the suitability of two specific outfits for one occasion (and optional
-    weather) by asking the stylist to rank ONLY those two. This measures A-vs-B
-    suitability directly; it does not touch the main 20-candidate top 5.
+    weather and research context) by asking the stylist to rank ONLY those two.
+    This measures A-vs-B suitability directly; it does not touch the main
+    20-candidate top 5.
 
-    When weather_context is given it is passed to both retrieval and the stylist,
-    so a weather eval can hold the outfits and occasion fixed and vary only the
-    weather. Returns {"winner", "ranked", "reasoning_offenders"} - offenders are
-    garments named in the winning outfit's reasoning but not actually in it.
+    weather_context and research_context are passed to the stylist, so an eval can
+    hold the outfits and occasion fixed and vary only one of them. Returns
+    {"winner", "ranked", "reasoning_offenders"} - offenders are garments named in
+    the winning outfit's reasoning but not actually in it.
     """
     candidates = [OutfitCandidate(items=outfit_a), OutfitCandidate(items=outfit_b)]
     if retrieved_guidance is None:
@@ -433,7 +441,12 @@ def compare_pairwise(
             occasion, weather_context=weather_context
         )
     ranked = rank_outfits(
-        candidates, wardrobe, occasion, retrieved_guidance, weather_context=weather_context
+        candidates,
+        wardrobe,
+        occasion,
+        retrieved_guidance,
+        weather_context=weather_context,
+        research_context=research_context,
     )
 
     winner = None
@@ -572,6 +585,88 @@ def run_weather_pairwise_set(
     print(
         f"weather pairwise: {passed}/{len(results)} ranking passed, "
         f"{consistent}/{len(results)} garment-consistent"
+    )
+    return results
+
+
+def _research_context_from_block(block, occasion):
+    if not block:
+        return None
+    return ResearchContext(
+        query=block.get("query", occasion),
+        summary=block["summary"],
+        inferred_formality=block.get("inferred_formality"),
+        source_title=block.get("source_title"),
+        source_url=block.get("source_url"),
+    )
+
+
+def run_research_pairwise_case(case, wardrobe) -> dict:
+    """
+    Hold the two outfits and occasion FIXED and vary only the research context.
+    Rank the pair WITH the verified research constraint and WITHOUT it, and check
+    the with-research winner matches expectation (hard), while the without-research
+    winner is recorded for comparison. `changed` flags when the research
+    materially moved the recommendation.
+
+    For an uncertain/irrelevant-research case set expect_change: false and the
+    same expected winner for both, so the check is that research did NOT derail a
+    recommendation it should not have changed.
+    """
+    outfit_a, outfit_b = case["outfit_a"], case["outfit_b"]
+    research = _research_context_from_block(case.get("research"), case["occasion"])
+
+    with_r = compare_pairwise(
+        outfit_a, outfit_b, case["occasion"], wardrobe, research_context=research
+    )
+    without_r = compare_pairwise(outfit_a, outfit_b, case["occasion"], wardrobe)
+
+    expected = case["expected_with_research"]
+    changed = with_r["winner"] != without_r["winner"]
+    return {
+        "id": case["id"],
+        "occasion": case["occasion"],
+        "question": case.get("question"),
+        "with_research": {
+            "winner": with_r["winner"],
+            "expected_winner": expected,
+            "passed": with_r["winner"] == expected,
+            "reasoning_offenders": with_r["reasoning_offenders"],
+            "ranked": with_r["ranked"],
+        },
+        "without_research": {"winner": without_r["winner"], "ranked": without_r["ranked"]},
+        "changed": changed,
+        "expect_change": case.get("expect_change", True),
+        "change_matches_expectation": changed == case.get("expect_change", True),
+    }
+
+
+def run_research_set(research_set_path, wardrobe_path, delay_seconds: float = 0) -> list[dict]:
+    """Run all research scenario cases (two stylist calls each: with and without
+    the research constraint), throttling between model calls."""
+    with open(research_set_path, encoding="utf-8") as handle:
+        cases = yaml.safe_load(handle)
+    with open(wardrobe_path, encoding="utf-8") as handle:
+        wardrobe = [WardrobeItem(**item) for item in json.load(handle)]
+
+    results = []
+    first = True
+    for case in cases:
+        if delay_seconds and not first:
+            time.sleep(delay_seconds)
+        first = False
+        result = run_research_pairwise_case(case, wardrobe)
+        results.append(result)
+        print(
+            f"{case['id']}: with-research {'ok' if result['with_research']['passed'] else 'FAIL'}, "
+            f"change {'as expected' if result['change_matches_expectation'] else 'UNEXPECTED'} "
+            f"(changed={result['changed']})"
+        )
+    passed = sum(1 for r in results if r["with_research"]["passed"])
+    change_ok = sum(1 for r in results if r["change_matches_expectation"])
+    print(
+        f"research scenarios: {passed}/{len(results)} applied the constraint, "
+        f"{change_ok}/{len(results)} change-vs-expectation correct"
     )
     return results
 

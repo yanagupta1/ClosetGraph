@@ -218,6 +218,45 @@ def test_graph_routes_through_research_when_supervisor_requests_it(monkeypatch, 
     assert result["ranked_outfits"]
 
 
+def test_graph_research_failure_degrades_gracefully(monkeypatch, sample_wardrobe):
+    # Supervisor asks for research, the lookup fails -> error surfaced, context
+    # stays None, and the stylist still produces a ranking.
+    monkeypatch.setattr(
+        "closetgraph.graph.supervise",
+        lambda occasion: {"research_needed": True, "research_query": "obscure code"},
+    )
+    monkeypatch.setattr(
+        "closetgraph.graph.run_research",
+        lambda query: (None, f"research lookup failed for {query!r}: OSError('down')"),
+    )
+    monkeypatch.setattr(
+        "closetgraph.graph.retrieve_style_guidance",
+        lambda occasion, weather_context=None: [],
+    )
+    seen = {}
+
+    def fake_rank(c, w, o, rg=None, weather_context=None, research_context=None):
+        seen["research"] = research_context
+        return [RankedOutfit(items=c[0].items, rank=1, reasoning="ok")]
+
+    monkeypatch.setattr("closetgraph.graph.rank_outfits", fake_rank)
+    graph = build_graph()
+
+    result = graph.invoke(
+        {
+            "wardrobe": sample_wardrobe,
+            "occasion": "dinner at an obscure club",
+            "candidate_outfits": [],
+            "ranked_outfits": [],
+        }
+    )
+
+    assert result["research_context"] is None  # not fabricated
+    assert "research lookup failed" in result["research_error"]
+    assert seen["research"] is None  # stylist got no research, ranked anyway
+    assert result["ranked_outfits"]
+
+
 def test_graph_skips_research_for_familiar_occasion(monkeypatch, sample_wardrobe):
     # Covered, plain occasion -> supervisor skips, research_node never runs.
     monkeypatch.setattr(

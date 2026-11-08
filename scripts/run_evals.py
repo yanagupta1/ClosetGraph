@@ -29,6 +29,7 @@ from langfuse import get_client
 from closetgraph.eval_harness import (
     run_golden_set,
     run_pairwise_set,
+    run_research_set,
     run_routing_set,
     run_weather_pairwise_set,
 )
@@ -39,7 +40,7 @@ def main() -> None:
         description="Run ClosetGraph evals (golden and/or pairwise) and save a JSON report."
     )
     parser.add_argument(
-        "--suite", choices=["golden", "pairwise", "weather", "routing", "all"], default="all",
+        "--suite", choices=["golden", "pairwise", "weather", "routing", "research", "all"], default="all",
         help="which suite to run (default: all)",
     )
     parser.add_argument(
@@ -56,6 +57,7 @@ def main() -> None:
         "--weather-pairwise-path", default="tests/eval/weather_pairwise_set.yaml"
     )
     parser.add_argument("--routing-path", default="tests/eval/routing_set.yaml")
+    parser.add_argument("--research-path", default="tests/eval/research_set.yaml")
     parser.add_argument(
         "--judge-reasons", action="store_true",
         help="for the routing suite, also LLM-judge the quality of each routing reason",
@@ -86,6 +88,7 @@ def main() -> None:
         "pairwise": [],
         "weather_pairwise": [],
         "routing": None,
+        "research": [],
         "errors": [],
     }
 
@@ -126,6 +129,15 @@ def main() -> None:
         except Exception as error:
             report["errors"].append({"suite": "routing", "error": repr(error)})
             print(f"routing failed: {error!r}")
+
+    if args.suite in ("research", "all"):
+        try:
+            report["research"] = run_research_set(
+                args.research_path, args.wardrobe_path, delay_seconds=args.delay
+            )
+        except Exception as error:
+            report["errors"].append({"suite": "research", "error": repr(error)})
+            print(f"research failed: {error!r}")
 
     try:
         get_client().flush()

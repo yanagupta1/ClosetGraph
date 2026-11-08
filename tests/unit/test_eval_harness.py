@@ -217,7 +217,7 @@ def test_run_golden_set_marks_inapplicable_missing_item_vs_combination(tmp_path,
 
 def test_run_pairwise_case_asserts_favoring_and_records_reversal(monkeypatch, sample_wardrobe):
     # Stub the stylist: B (with blazer) wins the client meeting, A wins the picnic.
-    def fake_rank_outfits(candidates, wardrobe, occasion, retrieved_guidance=None, weather_context=None):
+    def fake_rank_outfits(candidates, wardrobe, occasion, retrieved_guidance=None, weather_context=None, research_context=None):
         outfit_b = ["t1", "b1", "l1"]
         if "client meeting" in occasion:
             order = [c for c in candidates if c.items == outfit_b] + [
@@ -254,7 +254,7 @@ def test_run_pairwise_case_asserts_favoring_and_records_reversal(monkeypatch, sa
 
 def test_run_pairwise_set_repeats_and_counts_favoring_wins(tmp_path, monkeypatch):
     # B always wins the favoring occasion -> favoring_wins should equal repeats.
-    def fake_rank_outfits(candidates, wardrobe, occasion, retrieved_guidance=None, weather_context=None):
+    def fake_rank_outfits(candidates, wardrobe, occasion, retrieved_guidance=None, weather_context=None, research_context=None):
         outfit_b = ["t1", "b1", "l1"]
         order = [c for c in candidates if c.items == outfit_b] + [
             c for c in candidates if c.items != outfit_b
@@ -360,7 +360,7 @@ def _wx_wardrobe_items():
 
 def test_weather_pairwise_reports_ranking_and_consistency_separately(monkeypatch):
     # Stylist: the trench (l3) wins when cold, the base outfit wins when warm.
-    def fake_rank_outfits(candidates, wardrobe, occasion, retrieved_guidance=None, weather_context=None):
+    def fake_rank_outfits(candidates, wardrobe, occasion, retrieved_guidance=None, weather_context=None, research_context=None):
         cold = weather_context is not None and (weather_context.temperature_c or 99) < 10
         with_trench = next(c for c in candidates if "l3" in c.items)
         without = next(c for c in candidates if "l3" not in c.items)
@@ -393,7 +393,7 @@ def test_weather_pairwise_reports_ranking_and_consistency_separately(monkeypatch
 
 def test_weather_pairwise_flags_garment_inconsistency_without_failing_ranking(monkeypatch):
     # Winner is correct, but the reasoning name-drops a blazer not in the outfit.
-    def fake_rank_outfits(candidates, wardrobe, occasion, retrieved_guidance=None, weather_context=None):
+    def fake_rank_outfits(candidates, wardrobe, occasion, retrieved_guidance=None, weather_context=None, research_context=None):
         with_trench = next(c for c in candidates if "l3" in c.items)
         without = next(c for c in candidates if "l3" not in c.items)
         return [
@@ -478,6 +478,84 @@ def test_run_routing_set_judges_reason_quality_when_requested(tmp_path, monkeypa
 
     assert result["reason_quality"] == {"passed": 2, "judged": 2}
     assert all("reason_verdict" in c for c in result["cases"])
+
+
+def test_research_pairwise_applies_constraint_and_reports_change(monkeypatch):
+    # Stylist favors the formal outfit (B) only when a 'formal' research constraint
+    # is present; otherwise the casual outfit (A) wins.
+    def fake_rank(c, w, o, rg=None, weather_context=None, research_context=None):
+        formal = research_context is not None and "formal" in (
+            research_context.inferred_formality or research_context.summary or ""
+        )
+        b = next(x for x in c if x.items == ["t2", "b1", "l1"])
+        a = next(x for x in c if x.items == ["t7", "b2"])
+        order = [b, a] if formal else [a, b]
+        return [RankedOutfit(items=x.items, rank=i + 1, reasoning="ok") for i, x in enumerate(order)]
+
+    monkeypatch.setattr(eval_harness, "rank_outfits", fake_rank)
+    monkeypatch.setattr(eval_harness, "retrieve_style_guidance", lambda occasion, weather_context=None: [])
+
+    case = {
+        "id": "rs01",
+        "outfit_a": ["t7", "b2"],
+        "outfit_b": ["t2", "b1", "l1"],
+        "occasion": "an evening get-together at the Lido",
+        "research": {"summary": "formal club, jacket required", "inferred_formality": "formal"},
+        "expected_with_research": "B",
+        "expect_change": True,
+    }
+
+    wardrobe = [
+        _mk("t2", "silk blouse", "top"), _mk("b1", "trousers", "bottom"),
+        _mk("l1", "blazer", "layering"), _mk("t7", "tee", "top"), _mk("b2", "jeans", "bottom"),
+    ]
+    result = eval_harness.run_research_pairwise_case(case, wardrobe)
+
+    assert result["with_research"]["winner"] == "B"
+    assert result["with_research"]["passed"] is True
+    assert result["without_research"]["winner"] == "A"
+    assert result["changed"] is True
+    assert result["change_matches_expectation"] is True
+
+
+def test_research_pairwise_irrelevant_research_does_not_change(monkeypatch):
+    # Irrelevant research must not move the pick: A wins either way.
+    def fake_rank(c, w, o, rg=None, weather_context=None, research_context=None):
+        a = next(x for x in c if x.items == ["t2", "b4"])
+        other = next(x for x in c if x.items != ["t2", "b4"])
+        return [
+            RankedOutfit(items=a.items, rank=1, reasoning="ok"),
+            RankedOutfit(items=other.items, rank=2, reasoning="ok"),
+        ]
+
+    monkeypatch.setattr(eval_harness, "rank_outfits", fake_rank)
+    monkeypatch.setattr(eval_harness, "retrieve_style_guidance", lambda occasion, weather_context=None: [])
+
+    case = {
+        "id": "rs02",
+        "outfit_a": ["t2", "b4"],
+        "outfit_b": ["t7", "b5"],
+        "occasion": "casual weekend brunch",
+        "research": {"summary": "historic building", "inferred_formality": None},
+        "expected_with_research": "A",
+        "expect_change": False,
+    }
+
+    result = eval_harness.run_research_pairwise_case(case, [
+        _mk("t2", "blouse", "top"), _mk("b4", "camel trousers", "bottom"),
+        _mk("t7", "tee", "top"), _mk("b5", "denim", "bottom"),
+    ])
+
+    assert result["with_research"]["winner"] == "A"
+    assert result["with_research"]["passed"] is True
+    assert result["changed"] is False
+    assert result["change_matches_expectation"] is True
+
+
+def _mk(id, name, category):
+    from closetgraph.models import WardrobeItem
+
+    return WardrobeItem(id=id, name=name, category=category)
 
 
 def test_check_reasoning_garments_detects_absent_garment():

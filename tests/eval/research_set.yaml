@@ -1,0 +1,47 @@
+# Research scenario set (DRAFT - review expectations).
+#
+# Each case holds the two outfits and occasion FIXED and ranks the pair WITH a
+# verified research constraint and WITHOUT it. expected_with_research is the hard
+# expectation (the constraint is applied); the without-research winner is
+# recorded for comparison. expect_change says whether the research SHOULD move
+# the recommendation (true for a material constraint, false for irrelevant
+# research that must not derail the pick). Item ids refer to docs/wardrobe.json.
+
+# Paired: a verified formal club code lifts the formal outfit over the casual one
+- id: rs01
+  question: "Does a verified 'jacket required / formal' club code lift the formal outfit?"
+  outfit_a: [t7, b2]        # graphic tee + dark jeans (casual)
+  outfit_b: [t2, b1, l1]    # silk blouse + tailored trousers + blazer (formal)
+  occasion: "an evening get-together at the Lido"
+  research:
+    query: "the Lido dress code"
+    summary: "The Lido is a formal supper club that requires a jacket; casual wear is not permitted."
+    inferred_formality: "formal"
+  expected_with_research: B
+  expect_change: true
+
+# Uncertain/irrelevant research must NOT change an otherwise clear pick
+- id: rs02
+  question: "Does irrelevant research leave a clear brunch pick unchanged?"
+  outfit_a: [t2, b4]        # silk blouse + camel trousers (smart-casual, apt for brunch)
+  outfit_b: [t7, b5]        # graphic tee + relaxed denim (very casual)
+  occasion: "casual weekend brunch with friends"
+  research:
+    query: "the brunch spot"
+    summary: "The venue is a historic 1920s building noted for its architecture and mosaics."
+    inferred_formality: null
+  expected_with_research: A
+  expect_change: false
+
+# Paired: a verified published enclosure code lifts the formal outfit
+- id: rs03
+  question: "Does a verified strict enclosure code lift the tailored outfit?"
+  outfit_a: [t4, b4]        # navy long-sleeve + camel trousers (smart-casual)
+  outfit_b: [t2, b1, l1]    # blouse + tailored trousers + blazer (formal, jacketed)
+  occasion: "a day in the enclosure at a racecourse"
+  research:
+    query: "racecourse enclosure dress code"
+    summary: "The enclosure requires a jacket and formal day dress; no casual separates."
+    inferred_formality: "formal daywear"
+  expected_with_research: B
+  expect_change: true
