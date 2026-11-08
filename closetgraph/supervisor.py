@@ -110,6 +110,11 @@ def _llm_classify(occasion: str) -> dict:
             ],
             temperature=0,
             max_completion_tokens=5000,
+            # Routing is a lightweight yes/no classification; low reasoning effort
+            # stops the model exhausting its budget on reasoning (the empty-response
+            # cause) and cuts token cost. Its effect on accuracy is checked against
+            # the v2 baseline at the final routing regression.
+            reasoning_effort="low",
         )
         data = json.loads(_extract_json_object(response.choices[0].message.content))
     except Exception as error:  # fail safe: on classifier failure, do not research
