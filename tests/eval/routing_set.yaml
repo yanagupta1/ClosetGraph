@@ -122,10 +122,12 @@
   occasion: "dinner at a restaurant with a 'smart elegant' dress code"
   expected_research: true
   reason: "'smart elegant' is a specific European code that is ambiguous without lookup"
+# r29 relabeled to skip after v2 inspection: 1920s/Gatsby attire is broadly
+# general knowledge, so external info does not resolve uncertainty beyond it.
 - id: r29
   occasion: "a 'Roaring Twenties' themed party with a stated 1920s dress code"
-  expected_research: true
-  reason: "a specific era dress code materially changes styling and warrants confirming specifics"
+  expected_research: false
+  reason: "1920s/Gatsby attire is broadly general knowledge; the era code is inferable"
 
 # Ambiguous edges, labeled skip (inferable)
 - id: r23

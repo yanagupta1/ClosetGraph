@@ -109,7 +109,7 @@ def _llm_classify(occasion: str) -> dict:
                 {"role": "user", "content": SUPERVISOR_PROMPT_TEMPLATE.format(occasion=occasion)}
             ],
             temperature=0,
-            max_completion_tokens=4000,
+            max_completion_tokens=5000,
         )
         data = json.loads(_extract_json_object(response.choices[0].message.content))
     except Exception as error:  # fail safe: on classifier failure, do not research
