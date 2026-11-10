@@ -99,9 +99,13 @@ Methodology, metrics, the 20B-vs-120B model comparison, routing eval versions, a
 
 ### Observability
 
-Every model call is traced to Langfuse (free tier, zero cost):
+Every model call is traced to Langfuse (free tier, zero cost). Traces break down by component (supervise, rank_outfits, run_research, judge_outfit), so a recommendation can be inspected end to end:
 
-![Langfuse dashboard showing traced runs at $0 cost](docs/langfuse-dashboard.png)
+![Langfuse dashboard: 105 traced runs across supervise, rank_outfits, run_research and judge_outfit at $0 total cost](docs/langfuse-dashboard.png)
+
+Observations and token usage over time confirm the zero-cost footprint (16.39K tokens on gpt-oss-20b, $0):
+
+![Langfuse observations by time and model usage, 16.39K tokens at zero cost](docs/langfuse-usage.png)
 
 ---
 
