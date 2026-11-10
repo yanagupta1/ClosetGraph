@@ -109,11 +109,12 @@ def _llm_classify(occasion: str) -> dict:
                 {"role": "user", "content": SUPERVISOR_PROMPT_TEMPLATE.format(occasion=occasion)}
             ],
             temperature=0,
-            max_completion_tokens=5000,
-            # Routing is a lightweight yes/no classification; low reasoning effort
-            # stops the model exhausting its budget on reasoning (the empty-response
-            # cause) and cuts token cost. Its effect on accuracy is checked against
-            # the v2 baseline at the final routing regression.
+            # Low reasoning effort already keeps this well under 1000 tokens, so a
+            # small completion cap is enough and sharply cuts the TPM reservation
+            # (prompt + cap) when this runs back-to-back with research and stylist
+            # in one request. The previous benchmark (28/29) used a 5000 cap; the
+            # lower cap is re-checked on the hard routing cases.
+            max_completion_tokens=1024,
             reasoning_effort="low",
         )
         data = json.loads(_extract_json_object(response.choices[0].message.content))

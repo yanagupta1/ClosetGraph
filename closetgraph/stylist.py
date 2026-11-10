@@ -1,12 +1,29 @@
 import json
 import os
 import re
+import time
 
 from dotenv import load_dotenv
-from groq import Groq
+from groq import Groq, RateLimitError
 from langfuse import get_client, observe
 
 from closetgraph.models import OutfitCandidate, RankedOutfit, WardrobeItem
+
+
+def _create_with_backoff(client, *, max_retries=2, **kwargs):
+    """Call Groq chat completions with a bounded wait-and-retry on rate limits.
+    A 429 is a transient per-minute token-cap error, so wait the suggested time
+    and retry; this is distinct from a bad-parse, which is handled separately and
+    not retried here."""
+    for attempt in range(max_retries + 1):
+        try:
+            return client.chat.completions.create(**kwargs)
+        except RateLimitError as error:
+            if attempt == max_retries:
+                raise
+            match = re.search(r"try again in ([\d.]+)s", str(error))
+            wait = (float(match.group(1)) + 2) if match else 20.0
+            time.sleep(min(wait, 65))
 
 
 STYLIST_PROMPT_TEMPLATE = """You are a professional personal stylist evaluating outfit options for a specific occasion.
@@ -160,7 +177,8 @@ def rank_outfits(
         model=model,
         input=prompt,
     ) as generation:
-        response = client.chat.completions.create(
+        response = _create_with_backoff(
+            client,
             model=model,
             messages=[{"role": "user", "content": prompt}],
             temperature=0,
@@ -182,7 +200,8 @@ def rank_outfits(
     try:
         return _parse_ranked_outfits(content)
     except Exception as first_error:
-        retry_response = client.chat.completions.create(
+        retry_response = _create_with_backoff(
+            client,
             model=model,
             messages=[
                 {
