@@ -30,7 +30,18 @@ The weather pulled a rain jacket and scarf into the top pick, and the reasoning 
 
 Weather never overrides the occasion: for a cold `client meeting`, a warm-but-casual hoodie outfit still loses to the professional one. Dress code holds; weather only reorders the suitable options.
 
-**Unfamiliar occasions.** When a request names a venue or event whose dress code is not general knowledge (a members-only club code, a published enclosure code), a supervisor routes it to a research step that looks the code up and feeds the constraint to the stylist, so the recommendation and its explanation reflect what the occasion actually requires.
+**Unfamiliar occasions (research in action).** When a request names a venue or event whose dress code is not general knowledge, a supervisor routes it to a research step that looks the code up and feeds the constraint to the stylist.
+
+**Request:** `the Royal Enclosure at Royal Ascot`
+
+1. **Supervisor** flags an enclosure-specific dress code that general knowledge cannot settle, and routes to research instead of guessing.
+2. **Research agent** pulls the attire rules from Wikipedia ([Ascot Racecourse](https://en.wikipedia.org/wiki/Ascot_Racecourse)) and distills them to a styling constraint: *formal daywear; a hat 4 inches or larger; full-length formal trouser suits permitted* (inferred formality: **formal**).
+3. **Stylist** ranks the owned wardrobe against that researched formality. Top pick (real output):
+
+> **`t2` white silk button-down blouse, `b1` black tailored trousers, `l3` camel wool trench coat, `a1` grey wool scarf**
+> *"...combine for a polished, formal look suitable for the Royal Enclosure."*
+
+**Honest limit:** the Royal Enclosure code also requires a hat (4 inches or larger), and this wardrobe owns none, so the top pick reaches the right formal register but does not fully satisfy the code. ClosetGraph recommends only owned items, so it surfaces the closest available outfit rather than inventing a hat it does not have. The gap is visible, not papered over, which is the point of sourcing the constraint in the first place.
 
 ---
 
