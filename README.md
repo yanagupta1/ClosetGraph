@@ -87,13 +87,13 @@ Evaluation separates concerns that are easy to conflate: ranking quality, candid
 | Structural correctness | **0 violations** across all outputs |
 | Candidate coverage | **~86%**; 2 checks referenced combinations the bounded pool did not generate, reported as *inapplicable*, not failed |
 | Weather context-reversal | **4/4** ranking correct, **4/4** reasoning garment-consistent |
-| Supervisor routing | **72% to 90%** across benchmark iterations (29 labeled cases), decision accuracy and reason quality reported separately |
+| Supervisor routing | **97%** on a 29-case benchmark (up from 72% through principled iteration), 0 empty responses, decision accuracy and reason quality reported separately |
 | Test suite | **91 passing** (mocked; no live Groq or network in tests) |
 | Run cost | **$0** on Groq, Open-Meteo, and local ChromaDB free tiers |
 
 > **100% applicable ranking success is not 100% general accuracy.** It means every ranking check that *could* run on the generated candidates passed. Coverage (what the bounded pool let us test) is reported separately and honestly.
 
-**Controlled, one-variable tests.** A weather context-reversal holds the two outfits and occasion fixed and varies only the weather, so a ranking change is attributable to weather, not prompt noise (a trench ranks in at 2 degrees and drops at 27). The supervisor is evaluated in isolation against an independently-labeled benchmark: when the first run scored 72%, every failure was inspected individually, and accuracy rose to 90% by fixing the classifier, not by relabeling cases to pass. The stylist is tested with versus without a verified research constraint to confirm it uses the constraint, and with irrelevant research to confirm it is not derailed.
+**Controlled, one-variable tests.** A weather context-reversal holds the two outfits and occasion fixed and varies only the weather, so a ranking change is attributable to weather, not prompt noise (a trench ranks in at 2 degrees and drops at 27). The supervisor is evaluated in isolation against an independently-labeled benchmark: when the first run scored 72%, every failure was inspected individually and accuracy rose to 97% by fixing the classifier (including lowering its reasoning effort, which both raised accuracy and eliminated empty responses), not by relabeling cases to pass. The stylist is tested with versus without a verified research constraint to confirm it uses the constraint, and with irrelevant research to confirm it is not derailed.
 
 Methodology, metrics, the 20B-vs-120B model comparison, routing eval versions, and known limitations: **[docs/eval-results.md](docs/eval-results.md)**. Engineering lessons from building the evaluation: **[docs/evaluation_lessons.md](docs/evaluation_lessons.md)**.
 
