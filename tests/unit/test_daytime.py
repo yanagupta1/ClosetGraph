@@ -50,6 +50,11 @@ def test_iso_date():
     assert parse_when("2026-12-25", TODAY).target_date == date(2026, 12, 25)
 
 
+def test_malformed_iso_date_is_ignored():
+    # Shape matches the ISO pattern but is not a real date -> treated as no date.
+    assert parse_when("2026-13-45", TODAY) is None
+
+
 def test_period_attaches_window_and_keeps_date():
     parsed = parse_when("tomorrow evening", TODAY)
     assert parsed.target_date == date(2026, 11, 11)
