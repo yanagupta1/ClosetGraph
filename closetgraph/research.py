@@ -45,28 +45,56 @@ def _get_json(url):
         return json.loads(response.read().decode("utf-8"))
 
 
+# Qualifier words that rarely appear in page titles; stripping them turns a
+# verbose query like "Royal Enclosure dress code at Royal Ascot" into something
+# opensearch can match.
+_QUALIFIER_RE = re.compile(
+    r"\b(dress[- ]?code|attire|requirements?|what to wear|rules?|policy)\b", re.IGNORECASE
+)
+
+
+def _query_variants(query: str):
+    variants = []
+
+    def add(candidate):
+        candidate = " ".join(candidate.split())
+        if candidate and candidate.lower() not in [v.lower() for v in variants]:
+            variants.append(candidate)
+
+    add(query)
+    stripped = _QUALIFIER_RE.sub(" ", query)
+    add(stripped)
+    add(re.sub(r"^\s*(the|a|an)\s+", "", stripped, flags=re.IGNORECASE))
+    return variants
+
+
+def _resolve_title(query: str):
+    params = {"action": "opensearch", "search": query, "limit": 1, "namespace": 0, "format": "json"}
+    data = _get_json(f"{_OPENSEARCH_URL}?{urlencode(params)}")
+    titles = data[1] if isinstance(data, list) and len(data) > 1 else []
+    return titles[0] if titles else None
+
+
 def fetch_wikipedia(query: str) -> dict:
     """
     Resolve the best-matching Wikipedia page for a query and return its summary:
     {"title": str, "extract": str, "url": str|None}.
 
-    Two keyless calls: opensearch to find the title, then the REST summary for
-    the extract. Raises on no match, an empty extract, or a network/parse error
-    so the caller can surface the failure without fabricating research.
+    Keyless: opensearch to find the title (trying the query, then simplified
+    variants so a verbose "X dress code at Y" still resolves), then the REST
+    summary for the extract. Raises on no match, an empty extract, or a
+    network/parse error so the caller can surface the failure without fabricating
+    research. Note: only the lead summary is fetched, so a dress code that lives
+    in a later page section may not be captured (known limitation).
     """
-    params = {
-        "action": "opensearch",
-        "search": query,
-        "limit": 1,
-        "namespace": 0,
-        "format": "json",
-    }
-    data = _get_json(f"{_OPENSEARCH_URL}?{urlencode(params)}")
-    titles = data[1] if isinstance(data, list) and len(data) > 1 else []
-    if not titles:
+    title = None
+    for variant in _query_variants(query):
+        title = _resolve_title(variant)
+        if title:
+            break
+    if not title:
         raise ValueError(f"no Wikipedia match for {query!r}")
 
-    title = titles[0]
     summary = _get_json(f"{_SUMMARY_URL}{quote(title)}")
     extract = summary.get("extract")
     if not extract:

@@ -90,6 +90,29 @@ def test_fetch_wikipedia_success(monkeypatch):
     assert result["url"].endswith("Black_tie")
 
 
+def test_fetch_wikipedia_falls_back_to_simplified_query(monkeypatch):
+    # The verbose query has no match; the simplified variant (qualifier stripped)
+    # does. fetch_wikipedia should try the variant and succeed.
+    def urlopen(request, timeout=None):
+        url = getattr(request, "full_url", request)
+        if "api/rest_v1/page/summary" in url:
+            return FakeHTTPResponse(
+                {"extract": "Royal Ascot is a famous horse racing event.",
+                 "content_urls": {"desktop": {"page": "https://en.wikipedia.org/wiki/Royal_Ascot"}}}
+            )
+        # opensearch: match only when "dress code" is absent from the query
+        from urllib.parse import unquote
+        matched = "dress" not in unquote(url).lower()
+        results = ["Royal Ascot"] if matched else []
+        return FakeHTTPResponse(["q", results, [""], [""]])
+
+    monkeypatch.setattr("closetgraph.research.urlopen", urlopen)
+
+    result = fetch_wikipedia("Royal Ascot dress code")
+
+    assert result["title"] == "Royal Ascot"
+
+
 def test_fetch_wikipedia_no_match_raises(monkeypatch):
     monkeypatch.setattr(
         "closetgraph.research.urlopen",

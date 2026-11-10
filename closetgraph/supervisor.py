@@ -77,7 +77,7 @@ Common occasions (office, dinner, casual, cocktail, black tie) do NOT need resea
 Occasion: {occasion}
 
 Return ONLY a single JSON object, no markdown:
-{{"research_needed": true or false, "research_query": "<the dress code, venue, or event to look up, or null>", "research_reason": "<one short clause: what specific attire is uncertain and why, or why no research is needed>"}}
+{{"research_needed": true or false, "research_query": "<a concise searchable term, the dress code or event name alone (for example \"cocktail attire\", \"white tie\", \"Royal Ascot\"), not a full sentence, or null>", "research_reason": "<one short clause: what specific attire is uncertain and why, or why no research is needed>"}}
 """
 
 
