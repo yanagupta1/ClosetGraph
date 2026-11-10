@@ -1,0 +1,140 @@
+# Supervisor routing labels (benchmark - set independently, by principle).
+#
+# Evaluates the supervisor in ISOLATION: run supervise(occasion) only, no
+# research agent and no stylist. expected_research is the label; reason is the
+# human rationale. The deterministic skip handles the plain familiar cases; the
+# rest defer to the LLM classifier, so those outcomes are measured, not fixed.
+#
+# Governing principle: research is warranted ONLY when external information could
+# resolve a CONCRETE attire uncertainty that MATERIALLY changes styling. An
+# occasion sounding unfamiliar, cultural, or themed is NOT by itself enough if
+# the attire is broadly inferable from general knowledge.
+
+# Familiar occasions, attire inferable -> skip
+- id: r01
+  occasion: "first client meeting, conservative office"
+  expected_research: false
+  reason: "business/professional is a known, inferable dress code"
+- id: r02
+  occasion: "casual weekend brunch with friends"
+  expected_research: false
+  reason: "plainly casual"
+- id: r03
+  occasion: "team happy hour at a bar"
+  expected_research: false
+  reason: "casual to smart-casual, inferable"
+- id: r04
+  occasion: "job interview at a law firm"
+  expected_research: false
+  reason: "interview formality is well understood"
+- id: r05
+  occasion: "dinner date at an upscale restaurant"
+  expected_research: false
+  reason: "upscale dinner implies smart/formal, inferable"
+- id: r06
+  occasion: "cocktail party at a friend's apartment"
+  expected_research: false
+  reason: "cocktail is a known dress code"
+- id: r07
+  occasion: "black-tie wedding"
+  expected_research: false
+  reason: "black tie is an explicitly known dress code"
+- id: r08
+  occasion: "running errands and grabbing coffee"
+  expected_research: false
+  reason: "no dress code"
+
+# Unfamiliar venue NAME but no special attire -> skip
+- id: r09
+  occasion: "coffee at Blumen Cafe"
+  expected_research: false
+  reason: "a cafe has no special attire even though the name is unknown"
+- id: r10
+  occasion: "picnic at Griffith Park"
+  expected_research: false
+  reason: "a park picnic is casual; the venue name is irrelevant"
+- id: r11
+  occasion: "lunch at some new bistro downtown"
+  expected_research: false
+  reason: "a bistro reads smart-casual, inferable"
+- id: r12
+  occasion: "browsing a weekend street market"
+  expected_research: false
+  reason: "casual outdoor, no special attire"
+
+# Cultural/themed but attire broadly inferable -> skip (negative examples:
+# unfamiliarity or a theme alone does not justify research)
+- id: r17
+  occasion: "a masquerade ball"
+  expected_research: false
+  reason: "masquerade attire is broadly inferable (formal plus a mask); no concrete uncertainty"
+- id: r18
+  occasion: "a Dia de los Muertos celebration"
+  expected_research: false
+  reason: "guest attire is broadly inferable; cultural specificity alone is not enough"
+- id: r19
+  occasion: "a Renaissance faire in costume"
+  expected_research: false
+  reason: "already in costume and the theme's attire is broadly known"
+- id: r20
+  occasion: "a quinceanera"
+  expected_research: false
+  reason: "guest attire (semi-formal to formal) is broadly inferable"
+- id: r21
+  occasion: "spectating at a polo match"
+  expected_research: false
+  reason: "polo spectating is broadly inferable smart-casual; no concrete uncertainty"
+
+# Concrete attire uncertainty resolvable by research -> research
+- id: r13
+  occasion: "dinner at a members-only supper club with a dress code"
+  expected_research: true
+  reason: "a stated but unspecified club dress code must be looked up"
+- id: r14
+  occasion: "the Met Gala"
+  expected_research: true
+  reason: "the Met Gala's annual theme materially changes styling and is only knowable by lookup"
+- id: r15
+  occasion: "what to wear to a hunt ball"
+  expected_research: true
+  reason: "hunt ball attire is a specific, uncommon code that resolves concrete uncertainty"
+- id: r16
+  occasion: "the Royal Enclosure at Royal Ascot"
+  expected_research: true
+  reason: "Royal Ascot's Royal Enclosure has a published, strict dress code (hats, hemlines)"
+- id: r22
+  occasion: "a formal dinner at the Corinthian Yacht Club in club rig"
+  expected_research: true
+  reason: "'club rig' is a specific nautical formal code that lookup resolves"
+- id: r25
+  occasion: "the Stewards' Enclosure at the Henley Royal Regatta"
+  expected_research: true
+  reason: "Henley publishes a strict enclosure dress code (jackets/ties, skirt length)"
+- id: r26
+  occasion: "a wedding with a stated 'beach formal' dress code"
+  expected_research: true
+  reason: "'beach formal' is a specific, less-common code whose interpretation changes styling"
+- id: r27
+  occasion: "the Clubhouse at the Kentucky Derby"
+  expected_research: true
+  reason: "Derby Clubhouse has specific attire norms (and differs materially from the infield)"
+- id: r28
+  occasion: "dinner at a restaurant with a 'smart elegant' dress code"
+  expected_research: true
+  reason: "'smart elegant' is a specific European code that is ambiguous without lookup"
+# r29 relabeled to skip after v2 inspection: 1920s/Gatsby attire is broadly
+# general knowledge, so external info does not resolve uncertainty beyond it.
+- id: r29
+  occasion: "a 'Roaring Twenties' themed party with a stated 1920s dress code"
+  expected_research: false
+  reason: "1920s/Gatsby attire is broadly general knowledge; the era code is inferable"
+
+# Ambiguous edges, labeled skip (inferable)
+- id: r23
+  occasion: "networking mixer at a tech startup"
+  expected_research: false
+  reason: "business-casual, inferable"
+- id: r24
+  occasion: "rooftop birthday party"
+  expected_research: false
+  reason: "smart-casual social, inferable"

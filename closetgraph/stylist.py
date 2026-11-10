@@ -1,12 +1,29 @@
 import json
 import os
 import re
+import time
 
 from dotenv import load_dotenv
-from groq import Groq
+from groq import Groq, RateLimitError
 from langfuse import get_client, observe
 
 from closetgraph.models import OutfitCandidate, RankedOutfit, WardrobeItem
+
+
+def _create_with_backoff(client, *, max_retries=2, **kwargs):
+    """Call Groq chat completions with a bounded wait-and-retry on rate limits.
+    A 429 is a transient per-minute token-cap error, so wait the suggested time
+    and retry; this is distinct from a bad-parse, which is handled separately and
+    not retried here."""
+    for attempt in range(max_retries + 1):
+        try:
+            return client.chat.completions.create(**kwargs)
+        except RateLimitError as error:
+            if attempt == max_retries:
+                raise
+            match = re.search(r"try again in ([\d.]+)s", str(error))
+            wait = (float(match.group(1)) + 2) if match else 20.0
+            time.sleep(min(wait, 65))
 
 
 STYLIST_PROMPT_TEMPLATE = """You are a professional personal stylist evaluating outfit options for a specific occasion.
@@ -14,6 +31,8 @@ STYLIST_PROMPT_TEMPLATE = """You are a professional personal stylist evaluating 
 Occasion: {occasion}
 
 Weather: {weather}
+
+Researched context for this occasion: {research}
 
 Relevant style guidance retrieved for this occasion:
 {guidance}
@@ -26,6 +45,7 @@ Reasoning guidelines:
 - Layering pieces can raise the effective formality of what's underneath them when the combination makes sense. Penalize combinations that clash in formality or don't make practical sense together.
 - Favor outfits that are well-suited and coherent over outfits that are merely acceptable.
 - Weather, when provided, INFLUENCES but does NOT override the occasion. Keep the occasion's required formality, and within that, let weather shift which suitable options rank higher (e.g. for a cold, rainy client meeting still stay professional, but favor options with appropriate outerwear). Weight weather by the occasion: it matters more for outdoor or prolonged-exposure settings than for brief indoor ones. If weather is "none provided", rank without weather considerations.
+- Researched context, when provided, clarifies an unfamiliar occasion or dress code. Use it to set the expected formality and constraints, and briefly explain how it shaped your interpretation. It informs the ranking but does not override owned-wardrobe limits. If it is "none", rely on the occasion as given.
 Even when no candidate fully satisfies the occasion, always return your best 5 available candidates ranked by how close they come, with reasoning that explicitly names what's missing. Never return an outfit with empty items.
 
 Candidate outfits:
@@ -108,6 +128,16 @@ def _format_weather(weather_context) -> str:
     return ", ".join(parts) or "none provided"
 
 
+def _format_research(research_context) -> str:
+    """Human-readable research line for the prompt, or a clear 'none' marker."""
+    if research_context is None:
+        return "none"
+    parts = [research_context.summary]
+    if research_context.inferred_formality:
+        parts.append(f"(expected formality: {research_context.inferred_formality})")
+    return " ".join(parts)
+
+
 @observe()
 def rank_outfits(
     candidates: list[OutfitCandidate],
@@ -115,6 +145,7 @@ def rank_outfits(
     occasion: str,
     retrieved_guidance: list[str] | None = None,
     weather_context=None,
+    research_context=None,
 ) -> list[RankedOutfit]:
     load_dotenv()
     model = os.getenv("GROQ_MODEL", "openai/gpt-oss-20b")
@@ -123,6 +154,7 @@ def rank_outfits(
     prompt = STYLIST_PROMPT_TEMPLATE.format(
         occasion=occasion,
         weather=_format_weather(weather_context),
+        research=_format_research(research_context),
         guidance=guidance_text,
         candidates=_format_candidates(candidates, wardrobe),
     )
@@ -145,7 +177,8 @@ def rank_outfits(
         model=model,
         input=prompt,
     ) as generation:
-        response = client.chat.completions.create(
+        response = _create_with_backoff(
+            client,
             model=model,
             messages=[{"role": "user", "content": prompt}],
             temperature=0,
@@ -167,7 +200,8 @@ def rank_outfits(
     try:
         return _parse_ranked_outfits(content)
     except Exception as first_error:
-        retry_response = client.chat.completions.create(
+        retry_response = _create_with_backoff(
+            client,
             model=model,
             messages=[
                 {

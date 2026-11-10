@@ -215,3 +215,27 @@ reservation is now ~86% of TPM, so throttling stays necessary and the occasional
 429 is possible (now recorded as errored, not fatal). Cleaner long-term fix:
 lower reasoning_effort so the model does not spend 3000-4500 tokens reasoning
 about a ranking - reduces both empties and TPM pressure. Deferred.
+
+## Supervisor routing eval (Stage 4)
+
+Isolated supervisor evaluation on a 29-case benchmark labeled independently by
+principle (research only when external info resolves a concrete attire
+uncertainty that materially changes styling). Decision accuracy and reason
+quality are reported separately. Reports: docs/stage4-routing-v1.json (v1),
+-v2.json (v2), -v3.json (v3).
+
+- v1 (default reasoning): 21/29 (72%), 4 false positives, 4 false negatives,
+  reason quality 26/29. Failures inspected individually; all causes were in the
+  classifier, not the labels.
+- v2 (classifier fixes: defer on a stated code, raise token budget, strengthen
+  the prompt): 26/29 (90%), 0 false positives, 3 false negatives, reason quality
+  28/29. One label corrected on inspection (r29, 1920s attire is general
+  knowledge). Two hard residuals where the classifier under-researched famous
+  but specific events.
+- v3 (reasoning_effort lowered to "low"): 28/29 (97%), 0 false negatives, 1
+  false positive (r29, the borderline relabeled case), 0 empty responses. Lower
+  reasoning both raised accuracy and eliminated the empty responses on this
+  classification task (see lesson 10). Kept.
+
+Labels were never changed to make the model pass; the one correction (r29) was
+justified on principle. r29 remains a documented borderline case.

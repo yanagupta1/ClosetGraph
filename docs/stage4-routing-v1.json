@@ -1,0 +1,477 @@
+{
+  "config": {
+    "suite": "routing",
+    "repeats": 1,
+    "delay_seconds": 60.0,
+    "golden_path": "tests/eval/golden_set.yaml",
+    "pairwise_path": "tests/eval/pairwise_set.yaml",
+    "weather_pairwise_path": "tests/eval/weather_pairwise_set.yaml",
+    "wardrobe_path": "docs/wardrobe.json",
+    "groq_model": "openai/gpt-oss-20b",
+    "judge_model": "openai/gpt-oss-120b",
+    "started_at": "2026-11-06T18:22:06.651334+00:00",
+    "finished_at": "2026-11-06T19:20:07.282496+00:00"
+  },
+  "golden": [],
+  "pairwise": [],
+  "weather_pairwise": [],
+  "routing": {
+    "accuracy": 0.7241379310344828,
+    "passed": 21,
+    "total": 29,
+    "false_positives": [
+      "r17",
+      "r18",
+      "r20",
+      "r21"
+    ],
+    "false_negatives": [
+      "r13",
+      "r22",
+      "r26",
+      "r28"
+    ],
+    "reason_quality": {
+      "passed": 26,
+      "judged": 29
+    },
+    "cases": [
+      {
+        "id": "r01",
+        "occasion": "first client meeting, conservative office",
+        "expected_research": false,
+        "actual_research": false,
+        "passed": true,
+        "label_reason": "business/professional is a known, inferable dress code",
+        "supervisor_reason": "familiar occasion; dress code inferable from general knowledge",
+        "research_query": null,
+        "reason_verdict": {
+          "passed": true,
+          "score": 3,
+          "rationale": "The supervisor correctly notes that a first client meeting in a conservative office is a familiar scenario where the appropriate attire (business professional) can be inferred from general knowledge, so external research is unnecessary."
+        }
+      },
+      {
+        "id": "r02",
+        "occasion": "casual weekend brunch with friends",
+        "expected_research": false,
+        "actual_research": false,
+        "passed": true,
+        "label_reason": "plainly casual",
+        "supervisor_reason": "familiar occasion; dress code inferable from general knowledge",
+        "research_query": null,
+        "reason_verdict": {
+          "passed": true,
+          "score": 3,
+          "rationale": "The supervisor correctly notes that a casual weekend brunch is a familiar, everyday event whose dress expectations are well\u2011known, so no external research is needed."
+        }
+      },
+      {
+        "id": "r03",
+        "occasion": "team happy hour at a bar",
+        "expected_research": false,
+        "actual_research": false,
+        "passed": true,
+        "label_reason": "casual to smart-casual, inferable",
+        "supervisor_reason": "familiar occasion; dress code inferable from general knowledge",
+        "research_query": null,
+        "reason_verdict": {
+          "passed": true,
+          "score": 3,
+          "rationale": "The supervisor correctly notes that a team happy hour at a bar is a common, familiar setting where the expected dress code (casual or smart\u2011casual) can be inferred from general knowledge, so external research is unnecessary."
+        }
+      },
+      {
+        "id": "r04",
+        "occasion": "job interview at a law firm",
+        "expected_research": false,
+        "actual_research": false,
+        "passed": true,
+        "label_reason": "interview formality is well understood",
+        "supervisor_reason": "familiar occasion; dress code inferable from general knowledge",
+        "research_query": null,
+        "reason_verdict": {
+          "passed": true,
+          "score": 3,
+          "rationale": "The supervisor correctly notes that a law firm interview is a familiar scenario with a well\u2011known business\u2011formal dress code, so external research is unnecessary."
+        }
+      },
+      {
+        "id": "r05",
+        "occasion": "dinner date at an upscale restaurant",
+        "expected_research": false,
+        "actual_research": false,
+        "passed": true,
+        "label_reason": "upscale dinner implies smart/formal, inferable",
+        "supervisor_reason": "familiar occasion; dress code inferable from general knowledge",
+        "research_query": null,
+        "reason_verdict": {
+          "passed": true,
+          "score": 3,
+          "rationale": "The supervisor correctly notes that an upscale restaurant dinner date is a common scenario whose dress code (e.g., business\u2011casual or smart attire) can be inferred from general knowledge, so external research is unnecessary."
+        }
+      },
+      {
+        "id": "r06",
+        "occasion": "cocktail party at a friend's apartment",
+        "expected_research": false,
+        "actual_research": false,
+        "passed": true,
+        "label_reason": "cocktail is a known dress code",
+        "supervisor_reason": "familiar occasion; dress code inferable from general knowledge",
+        "research_query": null,
+        "reason_verdict": {
+          "passed": true,
+          "score": 3,
+          "rationale": "The supervisor correctly notes that a cocktail party is a well\u2011known event with an established dress code, so the attire can be inferred from general knowledge without additional research."
+        }
+      },
+      {
+        "id": "r07",
+        "occasion": "black-tie wedding",
+        "expected_research": false,
+        "actual_research": false,
+        "passed": true,
+        "label_reason": "black tie is an explicitly known dress code",
+        "supervisor_reason": "familiar occasion; dress code inferable from general knowledge",
+        "research_query": null,
+        "reason_verdict": {
+          "passed": true,
+          "score": 3,
+          "rationale": "The supervisor correctly notes that a black\u2011tie wedding is a well\u2011known occasion with a standard dress code that can be inferred from general knowledge, so external research is unnecessary."
+        }
+      },
+      {
+        "id": "r08",
+        "occasion": "running errands and grabbing coffee",
+        "expected_research": false,
+        "actual_research": false,
+        "passed": true,
+        "label_reason": "no dress code",
+        "supervisor_reason": "familiar occasion; dress code inferable from general knowledge",
+        "research_query": null,
+        "reason_verdict": {
+          "passed": true,
+          "score": 3,
+          "rationale": "Running errands and grabbing coffee is a common, informal activity, and general knowledge clearly indicates casual attire, so no external research is needed."
+        }
+      },
+      {
+        "id": "r09",
+        "occasion": "coffee at Blumen Cafe",
+        "expected_research": false,
+        "actual_research": false,
+        "passed": true,
+        "label_reason": "a cafe has no special attire even though the name is unknown",
+        "supervisor_reason": "No special attire expectations for a casual coffee at a cafe.",
+        "research_query": null,
+        "reason_verdict": {
+          "passed": true,
+          "score": 3,
+          "rationale": "The reason correctly identifies that a casual coffee at a cafe has no special attire expectations, which is inferable from general knowledge, so external research is unnecessary."
+        }
+      },
+      {
+        "id": "r10",
+        "occasion": "picnic at Griffith Park",
+        "expected_research": false,
+        "actual_research": false,
+        "passed": true,
+        "label_reason": "a park picnic is casual; the venue name is irrelevant",
+        "supervisor_reason": "Attire is casual and well understood for a public park picnic.",
+        "research_query": null,
+        "reason_verdict": {
+          "passed": true,
+          "score": 3,
+          "rationale": "The reason correctly notes that a public park picnic calls for casual attire, which is common knowledge and not uncertain, so external research is unnecessary."
+        }
+      },
+      {
+        "id": "r11",
+        "occasion": "lunch at some new bistro downtown",
+        "expected_research": false,
+        "actual_research": false,
+        "passed": true,
+        "label_reason": "a bistro reads smart-casual, inferable",
+        "supervisor_reason": "familiar occasion; dress code inferable from general knowledge",
+        "research_query": null,
+        "reason_verdict": {
+          "passed": true,
+          "score": 3,
+          "rationale": "The supervisor correctly notes that a lunch at a new downtown bistro is a familiar, everyday occasion whose dress code (typically casual or business\u2011casual) can be inferred from general knowledge, so external research is unnecessary."
+        }
+      },
+      {
+        "id": "r12",
+        "occasion": "browsing a weekend street market",
+        "expected_research": false,
+        "actual_research": false,
+        "passed": true,
+        "label_reason": "casual outdoor, no special attire",
+        "supervisor_reason": "Attire is casual and well understood",
+        "research_query": null,
+        "reason_verdict": {
+          "passed": true,
+          "score": 3,
+          "rationale": "The reason correctly states that street\u2011market attire is generally casual and commonly known, so no external research is needed."
+        }
+      },
+      {
+        "id": "r17",
+        "occasion": "a masquerade ball",
+        "expected_research": false,
+        "actual_research": true,
+        "passed": false,
+        "label_reason": "masquerade attire is broadly inferable (formal plus a mask); no concrete uncertainty",
+        "supervisor_reason": "Attire for a masquerade ball is uncertain due to mask and formal theme",
+        "research_query": "masquerade ball dress code",
+        "reason_verdict": {
+          "passed": true,
+          "score": 3,
+          "rationale": "The reason correctly identifies uncertainty about the required mask and formal dress code, justifying the need for external research."
+        }
+      },
+      {
+        "id": "r18",
+        "occasion": "a Dia de los Muertos celebration",
+        "expected_research": false,
+        "actual_research": true,
+        "passed": false,
+        "label_reason": "guest attire is broadly inferable; cultural specificity alone is not enough",
+        "supervisor_reason": "Specific cultural dress for Dia de los Muertos is uncertain and requires lookup",
+        "research_query": "Dia de los Muertos attire expectations",
+        "reason_verdict": {
+          "passed": true,
+          "score": 3,
+          "rationale": "The reason correctly identifies that the exact cultural attire for a Dia de los Muertos celebration is not known and therefore needs to be looked up, which is a valid justification for conducting research."
+        }
+      },
+      {
+        "id": "r19",
+        "occasion": "a Renaissance faire in costume",
+        "expected_research": false,
+        "actual_research": false,
+        "passed": true,
+        "label_reason": "already in costume and the theme's attire is broadly known",
+        "supervisor_reason": "classifier unavailable; proceeding without research",
+        "research_query": null,
+        "reason_verdict": {
+          "passed": false,
+          "score": 0,
+          "rationale": "The reason is vague and circular, offering no specific explanation of why the Renaissance faire attire is already known or why research is unnecessary; it does not justify the decision."
+        }
+      },
+      {
+        "id": "r20",
+        "occasion": "a quinceanera",
+        "expected_research": false,
+        "actual_research": true,
+        "passed": false,
+        "label_reason": "guest attire (semi-formal to formal) is broadly inferable",
+        "supervisor_reason": "specific cultural attire not inferred from general knowledge",
+        "research_query": "quinceanera dress code",
+        "reason_verdict": {
+          "passed": true,
+          "score": 3,
+          "rationale": "The reason correctly points out that the attire details for a quincea\u00f1era are culturally specific and not deducible from general knowledge, justifying the need for external research."
+        }
+      },
+      {
+        "id": "r21",
+        "occasion": "spectating at a polo match",
+        "expected_research": false,
+        "actual_research": true,
+        "passed": false,
+        "label_reason": "polo spectating is broadly inferable smart-casual; no concrete uncertainty",
+        "supervisor_reason": "Specific attire for polo spectators is uncertain and not widely known",
+        "research_query": "polo match spectator dress code",
+        "reason_verdict": {
+          "passed": false,
+          "score": 1,
+          "rationale": "The reason is vague and circular, merely stating that polo spectator attire is uncertain without specifying which aspects are unclear or why general knowledge doesn't cover them."
+        }
+      },
+      {
+        "id": "r13",
+        "occasion": "dinner at a members-only supper club with a dress code",
+        "expected_research": true,
+        "actual_research": false,
+        "passed": false,
+        "label_reason": "a stated but unspecified club dress code must be looked up",
+        "supervisor_reason": "familiar occasion; dress code inferable from general knowledge",
+        "research_query": null,
+        "reason_verdict": {
+          "passed": true,
+          "score": 3,
+          "rationale": "The supervisor correctly explains that the dress code can be inferred from general knowledge because the occasion is familiar, so external research is unnecessary."
+        }
+      },
+      {
+        "id": "r14",
+        "occasion": "the Met Gala",
+        "expected_research": true,
+        "actual_research": true,
+        "passed": true,
+        "label_reason": "the Met Gala's annual theme materially changes styling and is only knowable by lookup",
+        "supervisor_reason": "The Met Gala has a specific, themed dress code that is not general knowledge.",
+        "research_query": "Met Gala dress code",
+        "reason_verdict": {
+          "passed": true,
+          "score": 4,
+          "rationale": "The reason correctly identifies that the Met Gala\u2019s themed dress code is not common knowledge, making external research necessary."
+        }
+      },
+      {
+        "id": "r15",
+        "occasion": "what to wear to a hunt ball",
+        "expected_research": true,
+        "actual_research": true,
+        "passed": true,
+        "label_reason": "hunt ball attire is a specific, uncommon code that resolves concrete uncertainty",
+        "supervisor_reason": "hunt ball is a themed event with specific attire expectations not covered by general dress codes",
+        "research_query": "hunt ball dress code",
+        "reason_verdict": {
+          "passed": true,
+          "score": 3,
+          "rationale": "The reason correctly notes that a hunt ball is a themed event with unique dress expectations that are not covered by generic dress code knowledge, justifying the need for external research."
+        }
+      },
+      {
+        "id": "r16",
+        "occasion": "the Royal Enclosure at Royal Ascot",
+        "expected_research": true,
+        "actual_research": true,
+        "passed": true,
+        "label_reason": "Royal Ascot's Royal Enclosure has a published, strict dress code (hats, hemlines)",
+        "supervisor_reason": "Specific attire for the Royal Enclosure is not general knowledge and requires lookup",
+        "research_query": "Royal Ascot dress code",
+        "reason_verdict": {
+          "passed": true,
+          "score": 3,
+          "rationale": "The reason correctly identifies that the dress code for the Royal Enclosure is not common knowledge and therefore needs to be looked up, providing a specific justification for the research decision."
+        }
+      },
+      {
+        "id": "r22",
+        "occasion": "a formal dinner at the Corinthian Yacht Club in club rig",
+        "expected_research": true,
+        "actual_research": false,
+        "passed": false,
+        "label_reason": "'club rig' is a specific nautical formal code that lookup resolves",
+        "supervisor_reason": "classifier unavailable; proceeding without research",
+        "research_query": null,
+        "reason_verdict": {
+          "passed": false,
+          "score": 1,
+          "rationale": "The reason is vague and circular, offering no specific explanation of why the attire can be inferred without research, thus failing to justify the skip decision."
+        }
+      },
+      {
+        "id": "r25",
+        "occasion": "the Stewards' Enclosure at the Henley Royal Regatta",
+        "expected_research": true,
+        "actual_research": true,
+        "passed": true,
+        "label_reason": "Henley publishes a strict enclosure dress code (jackets/ties, skirt length)",
+        "supervisor_reason": "Attire expectations for the Stewards' Enclosure are not generally known and likely venue-specific.",
+        "research_query": "Henley Royal Regatta Stewards' Enclosure dress code",
+        "reason_verdict": {
+          "passed": true,
+          "score": 4,
+          "rationale": "The reason correctly identifies that the dress code for the Stewards' Enclosure is not common knowledge and is likely specific to the venue, justifying the need for research."
+        }
+      },
+      {
+        "id": "r26",
+        "occasion": "a wedding with a stated 'beach formal' dress code",
+        "expected_research": true,
+        "actual_research": false,
+        "passed": false,
+        "label_reason": "'beach formal' is a specific, less-common code whose interpretation changes styling",
+        "supervisor_reason": "familiar occasion; dress code inferable from general knowledge",
+        "research_query": null,
+        "reason_verdict": {
+          "passed": true,
+          "score": 3,
+          "rationale": "The supervisor correctly notes that 'beach formal' is a well\u2011known dress code that can be inferred from general knowledge, so external research is unnecessary."
+        }
+      },
+      {
+        "id": "r27",
+        "occasion": "the Clubhouse at the Kentucky Derby",
+        "expected_research": true,
+        "actual_research": true,
+        "passed": true,
+        "label_reason": "Derby Clubhouse has specific attire norms (and differs materially from the infield)",
+        "supervisor_reason": "Specific venue dress code not inferable from general knowledge",
+        "research_query": "Kentucky Derby Clubhouse dress code",
+        "reason_verdict": {
+          "passed": true,
+          "score": 3,
+          "rationale": "The reason correctly identifies that the Clubhouse's specific dress code cannot be deduced from general knowledge about the Kentucky Derby, justifying the need for external research."
+        }
+      },
+      {
+        "id": "r28",
+        "occasion": "dinner at a restaurant with a 'smart elegant' dress code",
+        "expected_research": true,
+        "actual_research": false,
+        "passed": false,
+        "label_reason": "'smart elegant' is a specific European code that is ambiguous without lookup",
+        "supervisor_reason": "familiar occasion; dress code inferable from general knowledge",
+        "research_query": null,
+        "reason_verdict": {
+          "passed": true,
+          "score": 3,
+          "rationale": "The reason correctly states that 'smart elegant' is a well\u2011known dress code that can be inferred from general knowledge, so external research is unnecessary."
+        }
+      },
+      {
+        "id": "r29",
+        "occasion": "a 'Roaring Twenties' themed party with a stated 1920s dress code",
+        "expected_research": true,
+        "actual_research": true,
+        "passed": true,
+        "label_reason": "a specific era dress code materially changes styling and warrants confirming specifics",
+        "supervisor_reason": "Specific 1920s attire details are uncertain and require lookup",
+        "research_query": "1920s dress code for Roaring Twenties themed party",
+        "reason_verdict": {
+          "passed": true,
+          "score": 3,
+          "rationale": "The reason correctly notes that, despite a general 1920s dress code, the exact details of appropriate attire are unclear and thus need external lookup."
+        }
+      },
+      {
+        "id": "r23",
+        "occasion": "networking mixer at a tech startup",
+        "expected_research": false,
+        "actual_research": false,
+        "passed": true,
+        "label_reason": "business-casual, inferable",
+        "supervisor_reason": "Attire is generally business casual for a tech startup networking mixer, no specific venue or event requires special dress code.",
+        "research_query": null,
+        "reason_verdict": {
+          "passed": true,
+          "score": 4,
+          "rationale": "The reason correctly notes that business casual is the standard expectation for a tech startup networking mixer and that no venue-specific or themed dress code is indicated, making external research unnecessary."
+        }
+      },
+      {
+        "id": "r24",
+        "occasion": "rooftop birthday party",
+        "expected_research": false,
+        "actual_research": false,
+        "passed": true,
+        "label_reason": "smart-casual social, inferable",
+        "supervisor_reason": "Attire can be inferred as casual or smart casual for a rooftop birthday party.",
+        "research_query": null,
+        "reason_verdict": {
+          "passed": true,
+          "score": 3,
+          "rationale": "The reason correctly states that a rooftop birthday party implies a generally understood dress code (casual or smart\u2011casual), making external research unnecessary."
+        }
+      }
+    ]
+  },
+  "errors": []
+}

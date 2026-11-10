@@ -1,0 +1,322 @@
+{
+  "config": {
+    "suite": "routing",
+    "repeats": 1,
+    "delay_seconds": 60.0,
+    "golden_path": "tests/eval/golden_set.yaml",
+    "pairwise_path": "tests/eval/pairwise_set.yaml",
+    "weather_pairwise_path": "tests/eval/weather_pairwise_set.yaml",
+    "wardrobe_path": "docs/wardrobe.json",
+    "groq_model": "openai/gpt-oss-20b",
+    "judge_model": "openai/gpt-oss-120b",
+    "started_at": "2026-11-10T17:44:11.022627+00:00",
+    "finished_at": "2026-11-10T18:12:36.439560+00:00"
+  },
+  "golden": [],
+  "pairwise": [],
+  "weather_pairwise": [],
+  "routing": {
+    "accuracy": 0.9655172413793104,
+    "passed": 28,
+    "total": 29,
+    "false_positives": [
+      "r29"
+    ],
+    "false_negatives": [],
+    "reason_quality": null,
+    "cases": [
+      {
+        "id": "r01",
+        "occasion": "first client meeting, conservative office",
+        "expected_research": false,
+        "actual_research": false,
+        "passed": true,
+        "label_reason": "business/professional is a known, inferable dress code",
+        "supervisor_reason": "familiar occasion; dress code inferable from general knowledge",
+        "research_query": null
+      },
+      {
+        "id": "r02",
+        "occasion": "casual weekend brunch with friends",
+        "expected_research": false,
+        "actual_research": false,
+        "passed": true,
+        "label_reason": "plainly casual",
+        "supervisor_reason": "familiar occasion; dress code inferable from general knowledge",
+        "research_query": null
+      },
+      {
+        "id": "r03",
+        "occasion": "team happy hour at a bar",
+        "expected_research": false,
+        "actual_research": false,
+        "passed": true,
+        "label_reason": "casual to smart-casual, inferable",
+        "supervisor_reason": "familiar occasion; dress code inferable from general knowledge",
+        "research_query": null
+      },
+      {
+        "id": "r04",
+        "occasion": "job interview at a law firm",
+        "expected_research": false,
+        "actual_research": false,
+        "passed": true,
+        "label_reason": "interview formality is well understood",
+        "supervisor_reason": "familiar occasion; dress code inferable from general knowledge",
+        "research_query": null
+      },
+      {
+        "id": "r05",
+        "occasion": "dinner date at an upscale restaurant",
+        "expected_research": false,
+        "actual_research": false,
+        "passed": true,
+        "label_reason": "upscale dinner implies smart/formal, inferable",
+        "supervisor_reason": "familiar occasion; dress code inferable from general knowledge",
+        "research_query": null
+      },
+      {
+        "id": "r06",
+        "occasion": "cocktail party at a friend's apartment",
+        "expected_research": false,
+        "actual_research": false,
+        "passed": true,
+        "label_reason": "cocktail is a known dress code",
+        "supervisor_reason": "familiar occasion; dress code inferable from general knowledge",
+        "research_query": null
+      },
+      {
+        "id": "r07",
+        "occasion": "black-tie wedding",
+        "expected_research": false,
+        "actual_research": false,
+        "passed": true,
+        "label_reason": "black tie is an explicitly known dress code",
+        "supervisor_reason": "familiar occasion; dress code inferable from general knowledge",
+        "research_query": null
+      },
+      {
+        "id": "r08",
+        "occasion": "running errands and grabbing coffee",
+        "expected_research": false,
+        "actual_research": false,
+        "passed": true,
+        "label_reason": "no dress code",
+        "supervisor_reason": "familiar occasion; dress code inferable from general knowledge",
+        "research_query": null
+      },
+      {
+        "id": "r09",
+        "occasion": "coffee at Blumen Cafe",
+        "expected_research": false,
+        "actual_research": false,
+        "passed": true,
+        "label_reason": "a cafe has no special attire even though the name is unknown",
+        "supervisor_reason": "No specific dress code or venue restriction; general cafe attire applies.",
+        "research_query": null
+      },
+      {
+        "id": "r10",
+        "occasion": "picnic at Griffith Park",
+        "expected_research": false,
+        "actual_research": false,
+        "passed": true,
+        "label_reason": "a park picnic is casual; the venue name is irrelevant",
+        "supervisor_reason": "No specific attire uncertainty; picnic is casual outdoor event with no special dress code.",
+        "research_query": null
+      },
+      {
+        "id": "r11",
+        "occasion": "lunch at some new bistro downtown",
+        "expected_research": false,
+        "actual_research": false,
+        "passed": true,
+        "label_reason": "a bistro reads smart-casual, inferable",
+        "supervisor_reason": "familiar occasion; dress code inferable from general knowledge",
+        "research_query": null
+      },
+      {
+        "id": "r12",
+        "occasion": "browsing a weekend street market",
+        "expected_research": false,
+        "actual_research": false,
+        "passed": true,
+        "label_reason": "casual outdoor, no special attire",
+        "supervisor_reason": "No specific attire uncertainty; casual street market attire is well understood.",
+        "research_query": null
+      },
+      {
+        "id": "r17",
+        "occasion": "a masquerade ball",
+        "expected_research": false,
+        "actual_research": false,
+        "passed": true,
+        "label_reason": "masquerade attire is broadly inferable (formal plus a mask); no concrete uncertainty",
+        "supervisor_reason": "Masquerade ball attire is broadly inferable from general knowledge.",
+        "research_query": null
+      },
+      {
+        "id": "r18",
+        "occasion": "a Dia de los Muertos celebration",
+        "expected_research": false,
+        "actual_research": false,
+        "passed": true,
+        "label_reason": "guest attire is broadly inferable; cultural specificity alone is not enough",
+        "supervisor_reason": "Attire for a Dia de los Muertos celebration is broadly inferable from general knowledge.",
+        "research_query": null
+      },
+      {
+        "id": "r19",
+        "occasion": "a Renaissance faire in costume",
+        "expected_research": false,
+        "actual_research": false,
+        "passed": true,
+        "label_reason": "already in costume and the theme's attire is broadly known",
+        "supervisor_reason": "Renaissance faire costume attire is generally known and does not require external lookup.",
+        "research_query": null
+      },
+      {
+        "id": "r20",
+        "occasion": "a quinceanera",
+        "expected_research": false,
+        "actual_research": false,
+        "passed": true,
+        "label_reason": "guest attire (semi-formal to formal) is broadly inferable",
+        "supervisor_reason": "Quinceanera attire is broadly inferable from general knowledge; no specific dress code requires external lookup.",
+        "research_query": null
+      },
+      {
+        "id": "r21",
+        "occasion": "spectating at a polo match",
+        "expected_research": false,
+        "actual_research": false,
+        "passed": true,
+        "label_reason": "polo spectating is broadly inferable smart-casual; no concrete uncertainty",
+        "supervisor_reason": "Attire is broadly inferable from general knowledge.",
+        "research_query": null
+      },
+      {
+        "id": "r13",
+        "occasion": "dinner at a members-only supper club with a dress code",
+        "expected_research": true,
+        "actual_research": true,
+        "passed": true,
+        "label_reason": "a stated but unspecified club dress code must be looked up",
+        "supervisor_reason": "dress code unspecified for members-only supper club, uncertain attire",
+        "research_query": "members-only supper club dress code"
+      },
+      {
+        "id": "r14",
+        "occasion": "the Met Gala",
+        "expected_research": true,
+        "actual_research": true,
+        "passed": true,
+        "label_reason": "the Met Gala's annual theme materially changes styling and is only knowable by lookup",
+        "supervisor_reason": "The Met Gala has a unique, non\u2011standard dress code that is not covered by general knowledge and requires specific details to determine what to wear",
+        "research_query": "Met Gala dress code"
+      },
+      {
+        "id": "r15",
+        "occasion": "what to wear to a hunt ball",
+        "expected_research": true,
+        "actual_research": true,
+        "passed": true,
+        "label_reason": "hunt ball attire is a specific, uncommon code that resolves concrete uncertainty",
+        "supervisor_reason": "Specific attire for a Hunt Ball is not general knowledge and may materially change what to wear",
+        "research_query": "Hunt Ball dress code"
+      },
+      {
+        "id": "r16",
+        "occasion": "the Royal Enclosure at Royal Ascot",
+        "expected_research": true,
+        "actual_research": true,
+        "passed": true,
+        "label_reason": "Royal Ascot's Royal Enclosure has a published, strict dress code (hats, hemlines)",
+        "supervisor_reason": "Specific, non-general dress code for Royal Enclosure is uncertain and requires confirmation",
+        "research_query": "Royal Enclosure dress code at Royal Ascot"
+      },
+      {
+        "id": "r22",
+        "occasion": "a formal dinner at the Corinthian Yacht Club in club rig",
+        "expected_research": true,
+        "actual_research": true,
+        "passed": true,
+        "label_reason": "'club rig' is a specific nautical formal code that lookup resolves",
+        "supervisor_reason": "The specific 'club rig' attire for the Corinthian Yacht Club is not general knowledge and requires external lookup to determine the exact requirements.",
+        "research_query": "Corinthian Yacht Club club rig dress code"
+      },
+      {
+        "id": "r25",
+        "occasion": "the Stewards' Enclosure at the Henley Royal Regatta",
+        "expected_research": true,
+        "actual_research": true,
+        "passed": true,
+        "label_reason": "Henley publishes a strict enclosure dress code (jackets/ties, skirt length)",
+        "supervisor_reason": "Specific formal attire requirements for this exclusive enclosure are not general knowledge",
+        "research_query": "Stewards' Enclosure dress code Henley Royal Regatta"
+      },
+      {
+        "id": "r26",
+        "occasion": "a wedding with a stated 'beach formal' dress code",
+        "expected_research": true,
+        "actual_research": true,
+        "passed": true,
+        "label_reason": "'beach formal' is a specific, less-common code whose interpretation changes styling",
+        "supervisor_reason": "specific attire for beach formal is not general knowledge",
+        "research_query": "beach formal dress code"
+      },
+      {
+        "id": "r27",
+        "occasion": "the Clubhouse at the Kentucky Derby",
+        "expected_research": true,
+        "actual_research": true,
+        "passed": true,
+        "label_reason": "Derby Clubhouse has specific attire norms (and differs materially from the infield)",
+        "supervisor_reason": "The specific attire required for the Clubhouse at the Kentucky Derby is not general knowledge and may differ from the general Derby dress code.",
+        "research_query": "Kentucky Derby Clubhouse dress code"
+      },
+      {
+        "id": "r28",
+        "occasion": "dinner at a restaurant with a 'smart elegant' dress code",
+        "expected_research": true,
+        "actual_research": true,
+        "passed": true,
+        "label_reason": "'smart elegant' is a specific European code that is ambiguous without lookup",
+        "supervisor_reason": "The specific attire for a 'smart elegant' dress code is not general knowledge and requires clarification.",
+        "research_query": "smart elegant dress code"
+      },
+      {
+        "id": "r29",
+        "occasion": "a 'Roaring Twenties' themed party with a stated 1920s dress code",
+        "expected_research": false,
+        "actual_research": true,
+        "passed": false,
+        "label_reason": "1920s/Gatsby attire is broadly general knowledge; the era code is inferable",
+        "supervisor_reason": "Specific 1920s dress code details are uncertain and may materially affect attire.",
+        "research_query": "1920s dress code for Roaring Twenties themed party"
+      },
+      {
+        "id": "r23",
+        "occasion": "networking mixer at a tech startup",
+        "expected_research": false,
+        "actual_research": false,
+        "passed": true,
+        "label_reason": "business-casual, inferable",
+        "supervisor_reason": "Standard networking mixer attire is business casual, no special code to resolve.",
+        "research_query": null
+      },
+      {
+        "id": "r24",
+        "occasion": "rooftop birthday party",
+        "expected_research": false,
+        "actual_research": false,
+        "passed": true,
+        "label_reason": "smart-casual social, inferable",
+        "supervisor_reason": "No specific dress code or venue details provided; attire can be inferred from general knowledge of rooftop birthday parties.",
+        "research_query": null
+      }
+    ]
+  },
+  "research": [],
+  "errors": []
+}

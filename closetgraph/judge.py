@@ -53,6 +53,61 @@ def _parse_verdict(content: str) -> JudgeVerdict:
     return JudgeVerdict(**json.loads(_extract_json_object(content)))
 
 
+ROUTING_REASON_PROMPT_TEMPLATE = """You are an impartial evaluator of a routing justification. A supervisor decided whether an outfit request needs external research about attire, and gave a reason. Judge ONLY whether the reason is a specific, correct justification for that decision.
+
+A good reason identifies what attire is actually uncertain and why (when research was chosen), or correctly explains why the attire is already inferable from general knowledge (when research was skipped). A vague, circular, or incorrect reason fails. Research is not limited to formal events; cultural, themed, venue-specific, and activity-specific attire can also warrant it.
+
+Occasion: {occasion}
+Decision: {decision}
+Supervisor's reason: {reason}
+
+Return ONLY a single JSON object, no markdown:
+{{"passed": true, "score": 3, "rationale": "<one or two sentences>"}}
+"""
+
+
+def _judge_with_retry(prompt: str, model: str) -> JudgeVerdict:
+    client = Groq()
+    response = client.chat.completions.create(
+        model=model,
+        messages=[{"role": "user", "content": prompt}],
+        temperature=0,
+        max_completion_tokens=8192,
+    )
+    try:
+        return _parse_verdict(response.choices[0].message.content)
+    except Exception as first_error:
+        retry = client.chat.completions.create(
+            model=model,
+            messages=[
+                {"role": "system", "content": "You return only a single valid JSON object. No markdown."},
+                {
+                    "role": "user",
+                    "content": (
+                        f"{prompt}\n\nThe previous response was not valid JSON "
+                        f"because: {first_error}. Return ONLY the JSON object."
+                    ),
+                },
+            ],
+            temperature=0,
+            max_completion_tokens=8192,
+        )
+        return _parse_verdict(retry.choices[0].message.content)
+
+
+@observe()
+def judge_routing_reason(occasion: str, decision: str, reason: str | None) -> JudgeVerdict:
+    """Score whether the supervisor's routing reason is a specific, correct
+    justification for its decision ('research' or 'skip'). Uses the configurable
+    judge model so it does not grade its own output."""
+    load_dotenv()
+    model = os.getenv("JUDGE_MODEL", "openai/gpt-oss-120b")
+    prompt = ROUTING_REASON_PROMPT_TEMPLATE.format(
+        occasion=occasion, decision=decision, reason=reason or "(none given)"
+    )
+    return _judge_with_retry(prompt, model)
+
+
 @observe()
 def judge_outfit(outfit: str, reasoning: str, occasion: str, rubric: str) -> JudgeVerdict:
     """

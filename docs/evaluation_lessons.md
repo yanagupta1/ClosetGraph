@@ -212,3 +212,25 @@ pass would not be.
 the rest at a level that does not independently explain the outcome. A failing
 controlled test is as likely to indict the experiment's design as the system
 under test - check the design before blaming the model.
+
+## 10. Match reasoning depth to the task; more reasoning is not always better
+
+**Issue.** The supervisor's routing classifier (a yes/no decision about whether
+an occasion needs research) was unreliable at the default reasoning effort: it
+scored 90% and intermittently returned empty responses, because the reasoning
+model spent its whole token budget on reasoning and emitted no answer.
+
+**Root cause.** Deep chain-of-thought is the wrong tool for a lightweight
+classification. The extra reasoning did not improve the decision; it caused
+over-thinking on borderline cases and exhausted the output budget, which failed
+safe to "skip" and showed up as false negatives.
+
+**Fix.** Lower the classifier's reasoning_effort to "low". On the same 29-case
+benchmark, accuracy rose from 90% to 97%, false negatives went from 3 to 0, and
+empty responses went to 0. The stylist, which does need compositional reasoning,
+kept its higher effort; only the classification step was turned down.
+
+**Takeaway.** On reasoning-capable models, treat reasoning effort as a per-task
+dial, not a global maximum. For simple classification or routing, low effort is
+cheaper, faster, and here more accurate and more reliable. Reserve deep reasoning
+for the steps that actually compose or judge.

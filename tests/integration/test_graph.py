@@ -1,5 +1,5 @@
 from closetgraph.graph import build_graph, weather_lookup_node
-from closetgraph.models import RankedOutfit, WeatherInput
+from closetgraph.models import RankedOutfit, ResearchContext, WeatherInput
 
 
 def test_weather_lookup_node_resolves_user_weather_without_api(monkeypatch):
@@ -45,7 +45,7 @@ def test_weather_lookup_node_surfaces_fetch_error(monkeypatch):
 
 
 def test_graph_generates_candidates_and_ranked_outfits(monkeypatch, sample_wardrobe):
-    def fake_rank_outfits(candidates, wardrobe, occasion, retrieved_guidance=None, weather_context=None):
+    def fake_rank_outfits(candidates, wardrobe, occasion, retrieved_guidance=None, weather_context=None, research_context=None):
         assert len(candidates) == 12
         assert wardrobe == sample_wardrobe
         assert occasion == "team happy hour, casual bar"
@@ -59,6 +59,7 @@ def test_graph_generates_candidates_and_ranked_outfits(monkeypatch, sample_wardr
 
     monkeypatch.setattr("closetgraph.graph.rank_outfits", fake_rank_outfits)
     monkeypatch.setattr("closetgraph.graph.retrieve_style_guidance", lambda occasion, weather_context=None: [])
+    monkeypatch.setattr("closetgraph.graph.supervise", lambda occasion: {"research_needed": False, "research_query": None})
     graph = build_graph()
 
     result = graph.invoke(
@@ -83,7 +84,7 @@ def test_graph_generates_candidates_and_ranked_outfits(monkeypatch, sample_wardr
 def test_graph_preserves_occasion_through_stylist_node(monkeypatch, sample_wardrobe):
     seen = {}
 
-    def fake_rank_outfits(candidates, wardrobe, occasion, retrieved_guidance=None, weather_context=None):
+    def fake_rank_outfits(candidates, wardrobe, occasion, retrieved_guidance=None, weather_context=None, research_context=None):
         seen["occasion"] = occasion
         return [
             RankedOutfit(
@@ -95,6 +96,7 @@ def test_graph_preserves_occasion_through_stylist_node(monkeypatch, sample_wardr
 
     monkeypatch.setattr("closetgraph.graph.rank_outfits", fake_rank_outfits)
     monkeypatch.setattr("closetgraph.graph.retrieve_style_guidance", lambda occasion, weather_context=None: [])
+    monkeypatch.setattr("closetgraph.graph.supervise", lambda occasion: {"research_needed": False, "research_query": None})
     graph = build_graph()
 
     result = graph.invoke(
@@ -113,13 +115,17 @@ def test_graph_preserves_occasion_through_stylist_node(monkeypatch, sample_wardr
 def _stub_stylist_and_retrieval(monkeypatch):
     monkeypatch.setattr(
         "closetgraph.graph.rank_outfits",
-        lambda c, w, o, rg=None, weather_context=None: [
+        lambda c, w, o, rg=None, weather_context=None, research_context=None: [
             RankedOutfit(items=c[0].items, rank=1, reasoning="ok")
         ],
     )
     monkeypatch.setattr(
         "closetgraph.graph.retrieve_style_guidance",
         lambda occasion, weather_context=None: [],
+    )
+    monkeypatch.setattr(
+        "closetgraph.graph.supervise",
+        lambda occasion: {"research_needed": False, "research_query": None},
     )
 
 
@@ -169,3 +175,114 @@ def test_graph_weather_fetch_failure_regression(monkeypatch, sample_wardrobe):
     assert result["weather_context"] is None  # not fabricated
     assert "network down" in result["weather_error"]
     assert result["ranked_outfits"]  # degrades gracefully, still ranks
+
+
+def test_graph_routes_through_research_when_supervisor_requests_it(monkeypatch, sample_wardrobe):
+    # Supervisor asks for research -> research_node runs -> context reaches stylist.
+    monkeypatch.setattr(
+        "closetgraph.graph.supervise",
+        lambda occasion: {"research_needed": True, "research_query": "hunt ball attire"},
+    )
+    monkeypatch.setattr(
+        "closetgraph.graph.run_research",
+        lambda query: (
+            ResearchContext(query=query, summary="Formal evening dress expected.",
+                            inferred_formality="formal"),
+            None,
+        ),
+    )
+    monkeypatch.setattr(
+        "closetgraph.graph.retrieve_style_guidance",
+        lambda occasion, weather_context=None: [],
+    )
+    seen = {}
+
+    def fake_rank(c, w, o, rg=None, weather_context=None, research_context=None):
+        seen["research"] = research_context
+        return [RankedOutfit(items=c[0].items, rank=1, reasoning="ok")]
+
+    monkeypatch.setattr("closetgraph.graph.rank_outfits", fake_rank)
+    graph = build_graph()
+
+    result = graph.invoke(
+        {
+            "wardrobe": sample_wardrobe,
+            "occasion": "what to wear to a hunt ball",
+            "candidate_outfits": [],
+            "ranked_outfits": [],
+        }
+    )
+
+    assert result["research_context"].inferred_formality == "formal"
+    assert seen["research"].summary == "Formal evening dress expected."
+    assert result["ranked_outfits"]
+
+
+def test_graph_research_failure_degrades_gracefully(monkeypatch, sample_wardrobe):
+    # Supervisor asks for research, the lookup fails -> error surfaced, context
+    # stays None, and the stylist still produces a ranking.
+    monkeypatch.setattr(
+        "closetgraph.graph.supervise",
+        lambda occasion: {"research_needed": True, "research_query": "obscure code"},
+    )
+    monkeypatch.setattr(
+        "closetgraph.graph.run_research",
+        lambda query: (None, f"research lookup failed for {query!r}: OSError('down')"),
+    )
+    monkeypatch.setattr(
+        "closetgraph.graph.retrieve_style_guidance",
+        lambda occasion, weather_context=None: [],
+    )
+    seen = {}
+
+    def fake_rank(c, w, o, rg=None, weather_context=None, research_context=None):
+        seen["research"] = research_context
+        return [RankedOutfit(items=c[0].items, rank=1, reasoning="ok")]
+
+    monkeypatch.setattr("closetgraph.graph.rank_outfits", fake_rank)
+    graph = build_graph()
+
+    result = graph.invoke(
+        {
+            "wardrobe": sample_wardrobe,
+            "occasion": "dinner at an obscure club",
+            "candidate_outfits": [],
+            "ranked_outfits": [],
+        }
+    )
+
+    assert result["research_context"] is None  # not fabricated
+    assert "research lookup failed" in result["research_error"]
+    assert seen["research"] is None  # stylist got no research, ranked anyway
+    assert result["ranked_outfits"]
+
+
+def test_graph_skips_research_for_familiar_occasion(monkeypatch, sample_wardrobe):
+    # Covered, plain occasion -> supervisor skips, research_node never runs.
+    monkeypatch.setattr(
+        "closetgraph.graph.run_research",
+        lambda query: (_ for _ in ()).throw(AssertionError("research must not run")),
+    )
+    monkeypatch.setattr(
+        "closetgraph.graph.retrieve_style_guidance",
+        lambda occasion, weather_context=None: [],
+    )
+    monkeypatch.setattr(
+        "closetgraph.graph.rank_outfits",
+        lambda c, w, o, rg=None, weather_context=None, research_context=None: [
+            RankedOutfit(items=c[0].items, rank=1, reasoning="ok")
+        ],
+    )
+    graph = build_graph()
+
+    result = graph.invoke(
+        {
+            "wardrobe": sample_wardrobe,
+            "occasion": "first client meeting, conservative office",
+            "candidate_outfits": [],
+            "ranked_outfits": [],
+        }
+    )
+
+    assert result["research_needed"] is False
+    assert result.get("research_context") is None

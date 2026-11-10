@@ -1,0 +1,29 @@
+{
+  "note": "targeted verification of r14/r15/r29 only, not full-suite accuracy",
+  "cases": [
+    {
+      "id": "r14",
+      "occasion": "the Met Gala",
+      "expected_research": true,
+      "actual_research": false,
+      "passed": false,
+      "supervisor_reason": "Dress code is known: black tie optional, theme not specified"
+    },
+    {
+      "id": "r15",
+      "occasion": "what to wear to a hunt ball",
+      "expected_research": true,
+      "actual_research": false,
+      "passed": false,
+      "supervisor_reason": "Generic themed ball; attire broadly inferable as formal (black tie) without need for external lookup."
+    },
+    {
+      "id": "r29",
+      "occasion": "a 'Roaring Twenties' themed party with a stated 1920s dress code",
+      "expected_research": false,
+      "actual_research": false,
+      "passed": true,
+      "supervisor_reason": "classifier unavailable; proceeding without research"
+    }
+  ]
+}
