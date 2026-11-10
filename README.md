@@ -2,6 +2,8 @@
 
 **An AI stylist that understands your wardrobe, not just your prompt.**
 
+![Your wardrobe, intelligently styled](docs/wardrobe-hero.png)
+
 ClosetGraph generates and ranks complete outfits from clothes you actually own, combining compositional styling reasoning, retrieved fashion knowledge, occasion constraints, real-world weather, and on-demand research for unfamiliar dress codes.
 
 The hard part isn't labeling a shirt "casual." It's judging a *complete outfit*: a tank reads business-casual under a tailored blazer, tailored trousers move from office to dinner depending on the top, and a trench earns its place only when it's cold. ClosetGraph is built around that compositional judgment, over clothes the user owns.
