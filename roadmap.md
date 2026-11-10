@@ -125,7 +125,13 @@ Weather (done):
 
 **Done when:** weather can visibly change an outfit ranking without breaking the owned-wardrobe constraint. (Met.)
 
-Deferred to Stage 4: time-aware weather (future-dated forecasts and time-of-day windows) and natural-language date/location extraction - these pair naturally with the research agent's understanding step.
+Time-aware weather (done, follow-up increment after Stage 4):
+
+- [x] Optional `when` hint on WeatherInput parsed by a deterministic stdlib parser (closetgraph/daytime.py): relative phrases (today, tonight, tomorrow, this/next weekday, in N days), ISO dates, and time-of-day / meal hints. No LLM call, zero cost, fully unit-tested with an injectable reference date.
+- [x] Open-Meteo forecast for the resolved date (closetgraph/weather.py): daily by default, hourly averaged over a window when the hint names a time, period, or meal (evening, 7pm, dinner). A date in the past or beyond the 16-day forecast window is surfaced, never substituted with current conditions.
+- [x] Unrecognized hint, or a hint with no location to forecast, is reported through weather_error rather than silently resolved to current conditions.
+- [x] Provenance: WeatherContext carries a forecast_note (the date and window the forecast is for, with the daily high/low), surfaced in the stylist's weather line so the explanation reflects what was forecast.
+- Still open (optional, model-backed): extracting date and location from free occasion text via an LLM understanding step; today the date/time comes from the structured `when` field and the location from WeatherInput.location.
 
 ## Stage 4: Research Agent
 
@@ -138,7 +144,7 @@ Deferred to Stage 4: time-aware weather (future-dated forecasts and time-of-day 
 
 **Done when:** the system can explain why it interpreted an ambiguous occasion a certain way, using external context when appropriate. (Met: "the Royal Enclosure at Royal Ascot" is routed to research, the Wikipedia dress-code passage is distilled into a formal-daywear constraint with provenance, and the stylist cites it in the ranking.)
 
-Deferred (next, as its own increment): time-aware weather (future-dated forecasts and time-of-day windows) and natural-language date/location extraction.
+Follow-up increment (done): time-aware weather, future-dated forecasts and time-of-day windows, driven by a deterministic date/time hint parser (see the Stage 3 time-aware weather subsection). Still optional: a model-backed understanding step that extracts date and location from free occasion text.
 
 ## Stage 5: Vision Input
 
