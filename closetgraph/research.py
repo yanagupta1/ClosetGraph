@@ -9,7 +9,7 @@ import json
 import logging
 import os
 import re
-from urllib.parse import quote, urlencode
+from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 
 from dotenv import load_dotenv
@@ -20,8 +20,7 @@ from closetgraph.models import ResearchContext
 
 logger = logging.getLogger(__name__)
 
-_OPENSEARCH_URL = "https://en.wikipedia.org/w/api.php"
-_SUMMARY_URL = "https://en.wikipedia.org/api/rest_v1/page/summary/"
+_WIKI_API_URL = "https://en.wikipedia.org/w/api.php"
 _HTTP_TIMEOUT = 10
 _USER_AGENT = "ClosetGraph/0.1 (portfolio project; outfit research)"
 
@@ -70,22 +69,56 @@ def _query_variants(query: str):
 
 def _resolve_title(query: str):
     params = {"action": "opensearch", "search": query, "limit": 1, "namespace": 0, "format": "json"}
-    data = _get_json(f"{_OPENSEARCH_URL}?{urlencode(params)}")
+    data = _get_json(f"{_WIKI_API_URL}?{urlencode(params)}")
     titles = data[1] if isinstance(data, list) and len(data) > 1 else []
     return titles[0] if titles else None
 
 
+def _fetch_page(title: str):
+    """Fetch a page's full plain-text extract and canonical URL in one keyless
+    query call (prop=extracts gives all sections, not just the lead)."""
+    params = {
+        "action": "query",
+        "prop": "extracts|info",
+        "explaintext": 1,
+        "inprop": "url",
+        "redirects": 1,
+        "titles": title,
+        "format": "json",
+    }
+    data = _get_json(f"{_WIKI_API_URL}?{urlencode(params)}")
+    pages = (data.get("query") or {}).get("pages") or {}
+    for page in pages.values():
+        return page.get("extract") or "", page.get("fullurl")
+    return "", None
+
+
+# Attire markers used to locate a dress-code passage anywhere in the article, so
+# a code in a later section (not the lead) is still captured.
+_ATTIRE_KEYWORDS = ("dress code", "dress-code", "attire", "what to wear", "white tie", "black tie")
+
+
+def _relevant_passage(text: str, max_chars: int = 1500) -> str:
+    lower = text.lower()
+    hits = [lower.find(kw) for kw in _ATTIRE_KEYWORDS if lower.find(kw) != -1]
+    if not hits:
+        return ""
+    start = max(0, min(hits) - 250)
+    return text[start : start + max_chars].strip()
+
+
 def fetch_wikipedia(query: str) -> dict:
     """
-    Resolve the best-matching Wikipedia page for a query and return its summary:
+    Resolve the best-matching Wikipedia page for a query and return a passage:
     {"title": str, "extract": str, "url": str|None}.
 
     Keyless: opensearch to find the title (trying the query, then simplified
-    variants so a verbose "X dress code at Y" still resolves), then the REST
-    summary for the extract. Raises on no match, an empty extract, or a
-    network/parse error so the caller can surface the failure without fabricating
-    research. Note: only the lead summary is fetched, so a dress code that lives
-    in a later page section may not be captured (known limitation).
+    variants so a verbose "X dress code at Y" still resolves), then a single
+    query call for the full plain-text extract. The returned extract is the
+    passage around the first attire/dress-code mention when the article has one
+    (so a code in a later section is captured), else the lead. Raises on no
+    match, empty content, or a network/parse error so the caller can surface the
+    failure without fabricating research.
     """
     title = None
     for variant in _query_variants(query):
@@ -95,13 +128,11 @@ def fetch_wikipedia(query: str) -> dict:
     if not title:
         raise ValueError(f"no Wikipedia match for {query!r}")
 
-    summary = _get_json(f"{_SUMMARY_URL}{quote(title)}")
-    extract = summary.get("extract")
-    if not extract:
-        raise ValueError(f"no summary extract for {title!r}")
+    full_text, url = _fetch_page(title)
+    if not full_text:
+        raise ValueError(f"no content for {title!r}")
 
-    content_urls = summary.get("content_urls") or {}
-    url = (content_urls.get("desktop") or {}).get("page")
+    extract = _relevant_passage(full_text) or full_text[:800].strip()
     return {"title": title, "extract": extract, "url": url}
 
 

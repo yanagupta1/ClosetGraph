@@ -57,15 +57,19 @@ class FakeHTTPResponse:
         return json.dumps(self._payload).encode("utf-8")
 
 
-def _fake_urlopen(opensearch=None, summary=None, raise_on=None):
-    """urlopen stub returning opensearch vs REST-summary payloads by URL."""
+def _page(extract, url="https://en.wikipedia.org/wiki/Example"):
+    return {"query": {"pages": {"1": {"extract": extract, "fullurl": url}}}}
+
+
+def _fake_urlopen(opensearch=None, page=None, raise_on=None):
+    """urlopen stub returning opensearch vs full-extract (action=query) payloads."""
 
     def urlopen(request, timeout=None):
         url = getattr(request, "full_url", request)
         if raise_on and raise_on in url:
             raise OSError("network down")
-        if "api/rest_v1/page/summary" in url:
-            return FakeHTTPResponse(summary)
+        if "action=query" in url:
+            return FakeHTTPResponse(page)
         return FakeHTTPResponse(opensearch)
 
     return urlopen
@@ -76,10 +80,10 @@ def test_fetch_wikipedia_success(monkeypatch):
         "closetgraph.research.urlopen",
         _fake_urlopen(
             opensearch=["black tie", ["Black tie"], [""], ["https://en.wikipedia.org/wiki/Black_tie"]],
-            summary={
-                "extract": "Black tie is a semi-formal Western dress code for evening events.",
-                "content_urls": {"desktop": {"page": "https://en.wikipedia.org/wiki/Black_tie"}},
-            },
+            page=_page(
+                "Black tie is a semi-formal Western dress code for evening events.",
+                "https://en.wikipedia.org/wiki/Black_tie",
+            ),
         ),
     )
 
@@ -90,21 +94,37 @@ def test_fetch_wikipedia_success(monkeypatch):
     assert result["url"].endswith("Black_tie")
 
 
+def test_fetch_wikipedia_extracts_dress_code_passage_from_later_section(monkeypatch):
+    # Attire appears deep in the article (not the lead); the passage around the
+    # "dress code" mention should be returned, not the irrelevant lead.
+    lead = "Royal Ascot is a famous horse racing event. " * 20
+    body = "History section with lots of unrelated text. " * 20
+    dress = "Dress code: the Royal Enclosure requires morning dress and a top hat."
+    monkeypatch.setattr(
+        "closetgraph.research.urlopen",
+        _fake_urlopen(
+            opensearch=["Royal Ascot", ["Royal Ascot"], [""], [""]],
+            page=_page(lead + body + dress, "https://en.wikipedia.org/wiki/Royal_Ascot"),
+        ),
+    )
+
+    result = fetch_wikipedia("Royal Ascot")
+
+    assert "morning dress" in result["extract"]
+    assert "top hat" in result["extract"]
+
+
 def test_fetch_wikipedia_falls_back_to_simplified_query(monkeypatch):
     # The verbose query has no match; the simplified variant (qualifier stripped)
     # does. fetch_wikipedia should try the variant and succeed.
     def urlopen(request, timeout=None):
         url = getattr(request, "full_url", request)
-        if "api/rest_v1/page/summary" in url:
-            return FakeHTTPResponse(
-                {"extract": "Royal Ascot is a famous horse racing event.",
-                 "content_urls": {"desktop": {"page": "https://en.wikipedia.org/wiki/Royal_Ascot"}}}
-            )
-        # opensearch: match only when "dress code" is absent from the query
+        if "action=query" in url:
+            return FakeHTTPResponse(_page("Royal Ascot is a famous horse racing event."))
         from urllib.parse import unquote
+
         matched = "dress" not in unquote(url).lower()
-        results = ["Royal Ascot"] if matched else []
-        return FakeHTTPResponse(["q", results, [""], [""]])
+        return FakeHTTPResponse(["q", (["Royal Ascot"] if matched else []), [""], [""]])
 
     monkeypatch.setattr("closetgraph.research.urlopen", urlopen)
 
@@ -128,11 +148,11 @@ def test_fetch_wikipedia_empty_extract_raises(monkeypatch):
         "closetgraph.research.urlopen",
         _fake_urlopen(
             opensearch=["q", ["Some Page"], [""], ["u"]],
-            summary={"extract": ""},
+            page=_page("", "u"),
         ),
     )
 
-    with pytest.raises(ValueError, match="no summary extract"):
+    with pytest.raises(ValueError, match="no content"):
         fetch_wikipedia("q")
 
 
