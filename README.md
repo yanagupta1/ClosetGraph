@@ -36,6 +36,12 @@ Weather never overrides the occasion: for a cold `client meeting`, a warm-but-ca
 
 ## How It Works
 
+From an owned garment, to a selected outfit, to context-aware styling:
+
+![Owned garment to selected outfit to context-aware styling](docs/experience-flow.png)
+
+Under the hood, that is a LangGraph pipeline:
+
 ```mermaid
 flowchart TD
     REQ[User request<br/>occasion + optional weather] --> GEN
@@ -51,7 +57,7 @@ flowchart TD
     RES -. research context .-> STY
 ```
 
-A LangGraph pipeline. Deterministic candidate generation feeds a supervisor that decides, with a cheap deterministic skip plus an LLM classifier only for ambiguous cases, whether the occasion needs research. The weather step is skipped with no API call when no weather is given, then category-stratified RAG runs, then a single Groq-backed stylist ranks and explains. Hard constraints (ownership, outfit structure) are checked in Python; nuanced suitability is left to the model; research and weather inform the ranking but never override the occasion or owned-wardrobe limits.
+Deterministic candidate generation feeds a supervisor that decides, with a cheap deterministic skip plus an LLM classifier only for ambiguous cases, whether the occasion needs research. The weather step is skipped with no API call when no weather is given, then category-stratified RAG runs, then a single Groq-backed stylist ranks and explains. Hard constraints (ownership, outfit structure) are checked in Python; nuanced suitability is left to the model; research and weather inform the ranking but never override the occasion or owned-wardrobe limits.
 
 ---
 
