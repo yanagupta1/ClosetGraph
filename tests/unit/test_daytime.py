@@ -70,6 +70,39 @@ def test_meal_hint_attaches_window():
     assert parsed.time_window.label == "dinner"
 
 
+def test_brunch_morning_night_windows():
+    assert parse_when("brunch tomorrow", TODAY).time_window.label == "brunch"
+    assert parse_when("brunch tomorrow", TODAY).time_window.start_hour == 10
+    assert parse_when("friday morning", TODAY).time_window.label == "morning"
+    assert parse_when("friday morning", TODAY).time_window.start_hour == 6
+    night = parse_when("saturday night", TODAY).time_window
+    assert night.label == "night"
+    assert (night.start_hour, night.end_hour) == (20, 24)
+
+
+def test_explicit_time_overrides_meal_keyword():
+    # "dinner at 5pm" should resolve to 17:00, not the generic dinner window.
+    parsed = parse_when("dinner at 5pm on friday", TODAY)
+    assert parsed.target_date == date(2026, 11, 13)
+    assert (parsed.time_window.start_hour, parsed.time_window.end_hour) == (17, 18)
+
+
+def test_overnight_window_crosses_midnight():
+    late = parse_when("late night on friday", TODAY).time_window
+    assert late.label == "late night"
+    assert (late.start_hour, late.end_hour) == (22, 26)  # 26 == 02:00 next day
+    over = parse_when("overnight saturday", TODAY).time_window
+    assert (over.start_hour, over.end_hour) == (22, 30)
+    # "late night" must not be shadowed by the plain "night" keyword.
+    assert parse_when("late night on friday", TODAY).time_window.label == "late night"
+
+
+def test_ambiguous_phrase_without_weekday_is_not_a_date():
+    # "this weekend" names no specific weekday -> treated as date-agnostic.
+    assert parse_when("this weekend", TODAY) is None
+    assert parse_when("sometime next week", TODAY) is None
+
+
 def test_bare_time_of_day_defaults_to_today():
     parsed = parse_when("this evening", TODAY)
     assert parsed.target_date == date(2026, 11, 10)

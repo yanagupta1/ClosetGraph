@@ -359,3 +359,168 @@ def test_resolve_weather_keeps_user_temp_when_forecast_fill_fails():
     assert context.temperature_c == 5  # user field preserved
     assert context.condition is None  # not fabricated
     assert error is not None and "forecast down" in error
+
+
+def test_resolve_weather_user_temp_overrides_conflicting_forecast():
+    # User states a temperature; the forecast fetch returns a different one.
+    # The user's value wins; only the missing condition is filled from the fetch.
+    def fetcher(location, target_date=None, time_window=None):
+        return {"temperature_c": 5.0, "condition": "rainy", "forecast_note": "note"}
+
+    context, error = resolve_weather(
+        WeatherInput(temperature_c=20, location="Boston", when="dinner tomorrow"),
+        fetcher=fetcher,
+    )
+
+    assert context.temperature_c == 20  # user override wins over fetched 5.0
+    assert context.condition == "rainy"  # gap filled from forecast
+    assert context.sources == {"temperature_c": "user", "condition": "open-meteo"}
+
+
+def test_resolve_weather_ambiguous_when_is_surfaced():
+    def boom(location, **kwargs):
+        raise AssertionError("must not fetch for an ambiguous date hint")
+
+    context, error = resolve_weather(
+        WeatherInput(location="Boston", when="this weekend"), fetcher=boom
+    )
+
+    assert context is None
+    assert error is not None and "could not interpret" in error
+
+
+# --- time-aware fetch: timezone, DST, overnight, failures ---
+
+def _recording_urlopen(seen, geocode, forecast):
+    def urlopen(url, timeout=None):
+        seen.append(url)
+        if "geocoding-api" in url:
+            return FakeHTTPResponse(geocode)
+        return FakeHTTPResponse(forecast)
+
+    return urlopen
+
+
+def test_fetch_open_meteo_sends_timezone_auto(monkeypatch):
+    target = date.today() + timedelta(days=2)
+    iso = target.isoformat()
+    seen = []
+    monkeypatch.setattr(
+        "closetgraph.weather.urlopen",
+        _recording_urlopen(
+            seen,
+            geocode={"results": [{"latitude": 35.68, "longitude": 139.69}]},
+            forecast={
+                "hourly": {
+                    "time": [f"{iso}T18:00"],
+                    "temperature_2m": [12.0],
+                    "weather_code": [0],
+                }
+            },
+        ),
+    )
+
+    fetch_open_meteo("Tokyo", target_date=target, time_window=TimeWindow(17, 22, "evening"))
+
+    forecast_urls = [u for u in seen if "/v1/forecast" in u]
+    assert forecast_urls and all("timezone=auto" in u for u in forecast_urls)
+
+
+def test_fetch_open_meteo_hourly_uses_destination_local_hours(monkeypatch):
+    # timezone=auto makes Open-Meteo return destination-local stamps; the window
+    # is matched against the local clock hour on the stamp, not UTC.
+    target = date.today() + timedelta(days=2)
+    iso = target.isoformat()
+    hours = [16, 17, 18, 19, 20, 21, 22]
+    monkeypatch.setattr(
+        "closetgraph.weather.urlopen",
+        _fake_urlopen(
+            geocode={"results": [{"latitude": 35.68, "longitude": 139.69}]},
+            forecast={
+                "hourly": {
+                    "time": [f"{iso}T{h:02d}:00" for h in hours],
+                    "temperature_2m": [20, 19, 18, 17, 16, 15, 14],
+                    "weather_code": [0, 0, 0, 0, 0, 0, 0],
+                }
+            },
+        ),
+    )
+
+    result = fetch_open_meteo(
+        "Tokyo", target_date=target, time_window=TimeWindow(17, 22, "evening")
+    )
+
+    # Evening 17-21 local -> temps 19,18,17,16,15 -> avg 17.0.
+    assert result["temperature_c"] == 17.0
+
+
+def test_fetch_open_meteo_overnight_window_crosses_midnight(monkeypatch):
+    target = date.today() + timedelta(days=2)
+    day0 = target.isoformat()
+    day1 = (target + timedelta(days=1)).isoformat()
+    times = [f"{day0}T{h:02d}:00" for h in (21, 22, 23)] + [
+        f"{day1}T{h:02d}:00" for h in (0, 1, 2)
+    ]
+    monkeypatch.setattr(
+        "closetgraph.weather.urlopen",
+        _fake_urlopen(
+            geocode={"results": [{"latitude": 42.36, "longitude": -71.06}]},
+            forecast={
+                "hourly": {
+                    "time": times,
+                    "temperature_2m": [10, 8, 7, 6, 5, 4],
+                    "weather_code": [0, 0, 0, 0, 0, 0],
+                }
+            },
+        ),
+    )
+
+    # late night 22-26 -> abs hours 22,23,24,25 -> temps 8,7,6,5 -> avg 6.5.
+    result = fetch_open_meteo(
+        "Boston", target_date=target, time_window=TimeWindow(22, 26, "late night")
+    )
+
+    assert result["temperature_c"] == 6.5
+    assert "late night" in result["forecast_note"]
+
+
+def test_fetch_open_meteo_tolerates_duplicated_hour_dst_fallback(monkeypatch):
+    # On a DST fall-back night a local hour can repeat; both samples are simply
+    # averaged, no crash.
+    target = date.today() + timedelta(days=2)
+    day0 = target.isoformat()
+    day1 = (target + timedelta(days=1)).isoformat()
+    times = [f"{day0}T23:00", f"{day1}T00:00", f"{day1}T01:00", f"{day1}T01:00"]
+    monkeypatch.setattr(
+        "closetgraph.weather.urlopen",
+        _fake_urlopen(
+            geocode={"results": [{"latitude": 42.36, "longitude": -71.06}]},
+            forecast={
+                "hourly": {
+                    "time": times,
+                    "temperature_2m": [7, 6, 5, 5],
+                    "weather_code": [0, 0, 0, 0],
+                }
+            },
+        ),
+    )
+
+    result = fetch_open_meteo(
+        "Boston", target_date=target, time_window=TimeWindow(22, 26, "late night")
+    )
+
+    # abs hours 23,24,25,25 -> temps 7,6,5,5 -> avg 5.75.
+    assert result["temperature_c"] == 5.8  # round(5.75, 1)
+
+
+def test_fetch_open_meteo_daily_missing_data_raises(monkeypatch):
+    monkeypatch.setattr(
+        "closetgraph.weather.urlopen",
+        _fake_urlopen(
+            geocode={"results": [{"latitude": 1.0, "longitude": 2.0}]},
+            forecast={"daily": {}},  # no arrays
+        ),
+    )
+
+    with pytest.raises(ValueError, match="missing data"):
+        fetch_open_meteo("Boston", target_date=date.today() + timedelta(days=3))

@@ -12,3 +12,4 @@ ab_results.json
 judge_results.json
 eval_reports/
 wx_results.json
+smoke_results.json

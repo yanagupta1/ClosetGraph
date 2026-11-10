@@ -177,6 +177,70 @@ def test_graph_weather_fetch_failure_regression(monkeypatch, sample_wardrobe):
     assert result["ranked_outfits"]  # degrades gracefully, still ranks
 
 
+def test_graph_time_aware_forecast_reaches_stylist(monkeypatch, sample_wardrobe):
+    # A `when` hint drives a forecast fetch; the resolved context (with its
+    # forecast_note) must reach the stylist.
+    _stub_stylist_and_retrieval(monkeypatch)
+
+    def fake_forecast(location, target_date=None, time_window=None):
+        assert location == "Boston"
+        assert target_date is not None  # a date was parsed from the hint
+        assert time_window is not None and time_window.label == "dinner"
+        return {
+            "temperature_c": 4.0,
+            "condition": "cloudy",
+            "forecast_note": "forecast for 2026-11-14 dinner (18:00-22:00, avg 4C)",
+        }
+
+    monkeypatch.setattr("closetgraph.graph.fetch_open_meteo", fake_forecast)
+    seen = {}
+    monkeypatch.setattr(
+        "closetgraph.graph.rank_outfits",
+        lambda c, w, o, rg=None, weather_context=None, research_context=None: seen.update(
+            wc=weather_context
+        )
+        or [RankedOutfit(items=c[0].items, rank=1, reasoning="ok")],
+    )
+    graph = build_graph()
+
+    result = graph.invoke(
+        {
+            "wardrobe": sample_wardrobe,
+            "occasion": "birthday dinner",
+            "candidate_outfits": [],
+            "ranked_outfits": [],
+            "weather_input": WeatherInput(location="Boston", when="dinner next Saturday"),
+        }
+    )
+
+    assert result["weather_context"].temperature_c == 4.0
+    assert "dinner" in result["weather_context"].forecast_note
+    assert seen["wc"].forecast_note == result["weather_context"].forecast_note
+
+
+def test_graph_unparseable_when_surfaces_error_and_still_ranks(monkeypatch, sample_wardrobe):
+    _stub_stylist_and_retrieval(monkeypatch)
+    monkeypatch.setattr(
+        "closetgraph.graph.fetch_open_meteo",
+        lambda *a, **k: (_ for _ in ()).throw(AssertionError("must not fetch")),
+    )
+    graph = build_graph()
+
+    result = graph.invoke(
+        {
+            "wardrobe": sample_wardrobe,
+            "occasion": "party",
+            "candidate_outfits": [],
+            "ranked_outfits": [],
+            "weather_input": WeatherInput(location="Boston", when="whenever-ish"),
+        }
+    )
+
+    assert result["weather_context"] is None  # no current-conditions substitute
+    assert "could not interpret" in result["weather_error"]
+    assert result["ranked_outfits"]  # degrades gracefully
+
+
 def test_graph_routes_through_research_when_supervisor_requests_it(monkeypatch, sample_wardrobe):
     # Supervisor asks for research -> research_node runs -> context reaches stylist.
     monkeypatch.setattr(
