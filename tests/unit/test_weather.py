@@ -513,6 +513,51 @@ def test_fetch_open_meteo_tolerates_duplicated_hour_dst_fallback(monkeypatch):
     assert result["temperature_c"] == 5.8  # round(5.75, 1)
 
 
+def test_fetch_open_meteo_geocode_missing_coordinates_raises(monkeypatch):
+    # Geocoder returns a match with no latitude/longitude.
+    monkeypatch.setattr(
+        "closetgraph.weather.urlopen",
+        _fake_urlopen(geocode={"results": [{"name": "Someplace"}]}),
+    )
+
+    with pytest.raises(ValueError, match="missing coordinates"):
+        fetch_open_meteo("Someplace")
+
+
+def test_fetch_open_meteo_hourly_empty_window_raises(monkeypatch):
+    # The forecast has hours, but none fall inside the requested window.
+    target = date.today() + timedelta(days=2)
+    iso = target.isoformat()
+    monkeypatch.setattr(
+        "closetgraph.weather.urlopen",
+        _fake_urlopen(
+            geocode={"results": [{"latitude": 1.0, "longitude": 2.0}]},
+            forecast={
+                "hourly": {
+                    "time": [f"{iso}T{h:02d}:00" for h in (9, 10, 11)],
+                    "temperature_2m": [12, 13, 14],
+                    "weather_code": [0, 0, 0],
+                }
+            },
+        ),
+    )
+
+    with pytest.raises(ValueError, match="no hourly forecast in window"):
+        fetch_open_meteo(
+            "Someplace", target_date=target, time_window=TimeWindow(17, 22, "evening")
+        )
+
+
+def test_resolve_weather_fetcher_returns_nothing_is_surfaced():
+    # Fetcher returns None (not an exception) -> surfaced, nothing fabricated.
+    context, error = resolve_weather(
+        WeatherInput(location="Someplace"), fetcher=lambda location: None
+    )
+
+    assert context is None
+    assert error is not None and "returned nothing" in error
+
+
 def test_fetch_open_meteo_daily_missing_data_raises(monkeypatch):
     monkeypatch.setattr(
         "closetgraph.weather.urlopen",

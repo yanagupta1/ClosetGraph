@@ -1,8 +1,40 @@
-from closetgraph.supervisor import supervise
+from closetgraph.supervisor import _llm_classify, supervise
 
 
 def _never_called(occasion):
     raise AssertionError("classifier must not be called on a deterministic skip")
+
+
+class FakeMessage:
+    def __init__(self, content):
+        self.content = content
+
+
+class FakeChoice:
+    def __init__(self, content):
+        self.message = FakeMessage(content)
+
+
+class FakeResponse:
+    def __init__(self, content):
+        self.choices = [FakeChoice(content)]
+
+
+class FakeCompletions:
+    def __init__(self, responses):
+        self.responses = list(responses)
+        self.calls = []
+
+    def create(self, **kwargs):
+        self.calls.append(kwargs)
+        return FakeResponse(self.responses.pop(0))
+
+
+class FakeGroq:
+    completions = None
+
+    def __init__(self):
+        self.chat = type("Chat", (), {"completions": self.completions})()
 
 
 def test_familiar_plain_occasion_skips_research_without_llm():
@@ -64,3 +96,83 @@ def test_unfamiliar_occasion_no_familiar_anchor_defers_to_classifier():
 
     assert decision["research_needed"] is True
     assert decision["research_query"] == "Hunt Ball attire"
+
+
+def test_escalation_marker_without_attire_word_defers():
+    # Covered word "cocktail" is present, but an escalation marker (masquerade/
+    # ball) means we must not take the deterministic skip.
+    def classifier(occasion):
+        return {"research_needed": True, "research_query": "masquerade ball attire"}
+
+    decision = supervise("cocktail at a masquerade ball", classifier=classifier)
+
+    assert decision["research_needed"] is True
+
+
+# --- _llm_classify: the default classifier (Groq mocked) ---
+
+def test_llm_classify_parses_research_decision(monkeypatch):
+    FakeGroq.completions = FakeCompletions(
+        ['{"research_needed": true, "research_query": "Royal Ascot", '
+         '"research_reason": "enclosure dress code is not general knowledge"}']
+    )
+    monkeypatch.setattr("closetgraph.supervisor.Groq", FakeGroq)
+    monkeypatch.setenv("SUPERVISOR_MODEL", "test-supervisor")
+
+    decision = _llm_classify("the Royal Enclosure at Royal Ascot")
+
+    assert decision["research_needed"] is True
+    assert decision["research_query"] == "Royal Ascot"
+    assert FakeGroq.completions.calls[0]["model"] == "test-supervisor"
+
+
+def test_llm_classify_drops_query_when_no_research_needed(monkeypatch):
+    FakeGroq.completions = FakeCompletions(
+        ['{"research_needed": false, "research_query": "office", '
+         '"research_reason": "an office is well understood"}']
+    )
+    monkeypatch.setattr("closetgraph.supervisor.Groq", FakeGroq)
+
+    decision = _llm_classify("the office")
+
+    assert decision["research_needed"] is False
+    assert decision["research_query"] is None  # query suppressed when not needed
+
+
+def test_llm_classify_treats_null_query_string_as_none(monkeypatch):
+    FakeGroq.completions = FakeCompletions(
+        ['{"research_needed": true, "research_query": "null", "research_reason": "x"}']
+    )
+    monkeypatch.setattr("closetgraph.supervisor.Groq", FakeGroq)
+
+    decision = _llm_classify("something ambiguous")
+
+    assert decision["research_needed"] is True
+    assert decision["research_query"] is None  # literal "null" normalized to None
+
+
+def test_llm_classify_fails_safe_to_no_research_on_bad_response(monkeypatch):
+    # A malformed (non-JSON) model response must not crash routing; it fails safe
+    # to no-research so the pipeline continues.
+    FakeGroq.completions = FakeCompletions(["not json at all"])
+    monkeypatch.setattr("closetgraph.supervisor.Groq", FakeGroq)
+
+    decision = _llm_classify("the Royal Enclosure at Royal Ascot")
+
+    assert decision["research_needed"] is False
+    assert decision["research_query"] is None
+    assert "classifier unavailable" in decision["research_reason"]
+
+
+def test_supervise_falls_through_to_llm_classify_by_default(monkeypatch):
+    # No classifier injected and not a deterministic skip -> default _llm_classify.
+    FakeGroq.completions = FakeCompletions(
+        ['{"research_needed": true, "research_query": "Henley Royal Regatta", '
+         '"research_reason": "stewards enclosure code"}']
+    )
+    monkeypatch.setattr("closetgraph.supervisor.Groq", FakeGroq)
+
+    decision = supervise("the Stewards' Enclosure at Henley")
+
+    assert decision["research_needed"] is True
+    assert decision["research_query"] == "Henley Royal Regatta"

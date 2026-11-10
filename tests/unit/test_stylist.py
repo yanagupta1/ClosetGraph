@@ -1,11 +1,14 @@
 import json
 
 import pytest
+from groq import RateLimitError
 
-from closetgraph.models import OutfitCandidate, RankedOutfit
+from closetgraph.models import OutfitCandidate, RankedOutfit, WeatherContext
 from closetgraph.stylist import (
+    _create_with_backoff,
     _extract_json_array,
     _format_candidates,
+    _format_weather,
     _parse_ranked_outfits,
     rank_outfits,
 )
@@ -260,6 +263,89 @@ def test_langfuse_client_initializes():
     from langfuse import get_client
 
     assert get_client() is not None
+
+
+# --- _create_with_backoff: rate-limit retry behavior ---
+
+def _rate_limit_error(message):
+    # Construct a RateLimitError without its network-bound __init__ so str(err)
+    # carries the message the backoff parses.
+    err = RateLimitError.__new__(RateLimitError)
+    err.args = (message,)
+    return err
+
+
+class _BackoffCompletions:
+    def __init__(self, fail_times, message):
+        self.fail_times = fail_times
+        self.message = message
+        self.calls = 0
+
+    def create(self, **kwargs):
+        self.calls += 1
+        if self.calls <= self.fail_times:
+            raise _rate_limit_error(self.message)
+        return "OK"
+
+
+class _BackoffClient:
+    def __init__(self, completions):
+        self.chat = type("Chat", (), {"completions": completions})()
+
+
+def test_create_with_backoff_waits_then_succeeds(monkeypatch):
+    slept = []
+    monkeypatch.setattr("closetgraph.stylist.time.sleep", lambda s: slept.append(s))
+    comp = _BackoffCompletions(fail_times=1, message="Rate limit reached, try again in 1.5s")
+    client = _BackoffClient(comp)
+
+    result = _create_with_backoff(client, model="m")
+
+    assert result == "OK"
+    assert comp.calls == 2  # failed once, retried once
+    assert slept == [3.5]  # parsed 1.5s + 2s buffer, under the 65s cap
+
+
+def test_create_with_backoff_uses_default_wait_when_no_hint(monkeypatch):
+    slept = []
+    monkeypatch.setattr("closetgraph.stylist.time.sleep", lambda s: slept.append(s))
+    comp = _BackoffCompletions(fail_times=1, message="rate limited, slow down")
+    client = _BackoffClient(comp)
+
+    _create_with_backoff(client, model="m")
+
+    assert slept == [20.0]  # no "try again in Xs" -> conservative default
+
+
+def test_create_with_backoff_reraises_after_exhausting_retries(monkeypatch):
+    monkeypatch.setattr("closetgraph.stylist.time.sleep", lambda s: None)
+    comp = _BackoffCompletions(fail_times=99, message="try again in 0.1s")
+    client = _BackoffClient(comp)
+
+    with pytest.raises(RateLimitError):
+        _create_with_backoff(client, max_retries=2, model="m")
+
+    assert comp.calls == 3  # initial try + 2 retries, then propagate
+
+
+def test_parse_ranked_outfits_rejects_non_list_payload():
+    # A JSON object under a known key that is not a list -> explicit error.
+    with pytest.raises(ValueError, match="Expected a JSON array"):
+        _parse_ranked_outfits('{"ranked_outfits": {"rank": 1}}')
+
+
+def test_format_weather_appends_forecast_note():
+    wc = WeatherContext(
+        temperature_c=5,
+        condition="clear",
+        sources={"temperature_c": "open-meteo", "condition": "open-meteo"},
+        forecast_note="forecast for 2026-11-14 evening (18:00-22:00, avg 5C)",
+    )
+
+    line = _format_weather(wc)
+
+    assert line.startswith("5 degrees celsius, clear")
+    assert "(forecast for 2026-11-14 evening" in line
 
 
 def test_rank_outfits_logs_generation_usage_without_breaking(monkeypatch, sample_wardrobe):

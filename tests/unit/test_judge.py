@@ -1,6 +1,6 @@
 import pytest
 
-from closetgraph.judge import JudgeVerdict, judge_outfit
+from closetgraph.judge import JudgeVerdict, judge_outfit, judge_routing_reason
 
 
 class FakeMessage:
@@ -86,3 +86,55 @@ def test_judge_raises_on_persistently_malformed_response(monkeypatch):
         judge_outfit(**_args())
 
     assert len(FakeGroq.completions.calls) == 2  # tried once, retried once
+
+
+def test_judge_raises_on_empty_response(monkeypatch):
+    # An empty string both times -> the "empty" branch raises, not a crash.
+    FakeGroq.completions = FakeCompletions(["", ""])
+    monkeypatch.setattr("closetgraph.judge.Groq", FakeGroq)
+
+    with pytest.raises(ValueError, match="empty"):
+        judge_outfit(**_args())
+
+
+def test_judge_strips_markdown_fenced_json(monkeypatch):
+    FakeGroq.completions = FakeCompletions(
+        ['```json\n{"passed": true, "score": 5, "rationale": "Clean."}\n```']
+    )
+    monkeypatch.setattr("closetgraph.judge.Groq", FakeGroq)
+
+    verdict = judge_outfit(**_args())
+
+    assert verdict.passed is True and verdict.score == 5
+
+
+def test_judge_routing_reason_parses_verdict(monkeypatch):
+    FakeGroq.completions = FakeCompletions(
+        ['{"passed": true, "score": 4, "rationale": "Names the uncertain code."}']
+    )
+    monkeypatch.setattr("closetgraph.judge.Groq", FakeGroq)
+    monkeypatch.setenv("JUDGE_MODEL", "test-judge")
+
+    verdict = judge_routing_reason(
+        "the Royal Enclosure at Royal Ascot",
+        "research",
+        "the enclosure dress code is not general knowledge",
+    )
+
+    assert isinstance(verdict, JudgeVerdict)
+    assert verdict.passed is True
+    assert FakeGroq.completions.calls[0]["model"] == "test-judge"
+
+
+def test_judge_routing_reason_retries_after_bad_parse(monkeypatch):
+    # First response is unparseable; the stricter retry returns valid JSON.
+    FakeGroq.completions = FakeCompletions(
+        ["not json", '{"passed": false, "score": 2, "rationale": "Circular reason."}']
+    )
+    monkeypatch.setattr("closetgraph.judge.Groq", FakeGroq)
+
+    verdict = judge_routing_reason("office", "skip", "an office is obvious")
+
+    assert verdict.passed is False
+    assert len(FakeGroq.completions.calls) == 2  # retried once
+    assert FakeGroq.completions.calls[1]["messages"][0]["role"] == "system"

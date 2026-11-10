@@ -3,7 +3,7 @@ import json
 import pytest
 
 from closetgraph.models import ResearchContext
-from closetgraph.research import fetch_wikipedia, run_research
+from closetgraph.research import _extract_json_object, fetch_wikipedia, run_research
 
 
 class FakeMessage:
@@ -131,6 +131,30 @@ def test_fetch_wikipedia_falls_back_to_simplified_query(monkeypatch):
     result = fetch_wikipedia("Royal Ascot dress code")
 
     assert result["title"] == "Royal Ascot"
+
+
+def test_fetch_wikipedia_empty_pages_raises(monkeypatch):
+    # opensearch resolves a title, but the extract query returns no pages at all
+    # -> _fetch_page yields ("", None) and fetch_wikipedia reports no content.
+    monkeypatch.setattr(
+        "closetgraph.research.urlopen",
+        _fake_urlopen(
+            opensearch=["q", ["Some Page"], [""], ["u"]],
+            page={"query": {"pages": {}}},
+        ),
+    )
+
+    with pytest.raises(ValueError, match="no content"):
+        fetch_wikipedia("q")
+
+
+def test_extract_json_object_raises_on_empty():
+    with pytest.raises(ValueError, match="empty"):
+        _extract_json_object("")
+
+
+def test_extract_json_object_strips_markdown_fence():
+    assert _extract_json_object('```json\n{"summary": "x"}\n```') == '{"summary": "x"}'
 
 
 def test_fetch_wikipedia_no_match_raises(monkeypatch):
