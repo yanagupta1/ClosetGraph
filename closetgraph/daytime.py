@@ -97,6 +97,8 @@ def _resolve_date(text: str, today: date) -> date | None:
 
 
 def _resolve_window(text: str) -> TimeWindow | None:
+    # An explicit clock time wins over a meal/period keyword ("dinner at 5pm"
+    # means 17:00, not the generic dinner window).
     clock = _CLOCK_12H_RE.search(text)
     if clock:
         hour = int(clock.group(1)) % 12
@@ -108,6 +110,13 @@ def _resolve_window(text: str) -> TimeWindow | None:
     if clock24:
         hour = int(clock24.group(1))
         return TimeWindow(hour, min(hour + 1, 24), clock24.group(0))
+    # Overnight windows cross midnight; their end hour runs past 24 (e.g. 02:00
+    # next day = 26). Checked before the plain "night" keyword so they are not
+    # shadowed by it (both contain the substring "night").
+    if "overnight" in text:
+        return TimeWindow(22, 30, "overnight")  # 22:00 - 06:00 next day
+    if "late night" in text:
+        return TimeWindow(22, 26, "late night")  # 22:00 - 02:00 next day
     for word, (start, end, label) in {**_MEALS, **_PERIODS}.items():
         if re.search(rf"\b{word}\b", text):
             return TimeWindow(start, end, label)

@@ -14,7 +14,7 @@ conditions, so a future request is never answered with today's weather.
 import json
 import logging
 from collections import Counter
-from datetime import date
+from datetime import date, timedelta
 from urllib.parse import urlencode
 from urllib.request import urlopen
 
@@ -120,12 +120,17 @@ def _fetch_daily(lat: float, lon: float, target_date: date) -> dict:
 
 def _fetch_hourly(lat: float, lon: float, target_date: date, window: TimeWindow) -> dict:
     iso = target_date.isoformat()
+    # An overnight window (end hour past 24) spills into the next day, so request
+    # both days and filter on an absolute hour measured from the target date's
+    # midnight. timezone=auto makes Open-Meteo return destination-local times
+    # (DST included), so the hour read off each stamp is the local clock hour.
+    end_date = target_date if window.end_hour <= 24 else target_date + timedelta(days=1)
     params = {
         "latitude": lat,
         "longitude": lon,
         "hourly": "temperature_2m,weather_code",
         "start_date": iso,
-        "end_date": iso,
+        "end_date": end_date.isoformat(),
         "timezone": "auto",
     }
     data = _get_json(f"{_FORECAST_URL}?{urlencode(params)}")
@@ -135,20 +140,22 @@ def _fetch_hourly(lat: float, lon: float, target_date: date, window: TimeWindow)
     codes = hourly.get("weather_code") or []
     picked_temps, picked_codes = [], []
     for stamp, temp, code in zip(times, temps, codes):
-        hour = int(stamp[11:13])  # ISO "2026-11-14T18:00"
-        if window.start_hour <= hour < window.end_hour and temp is not None:
+        day_offset = (date.fromisoformat(stamp[:10]) - target_date).days
+        abs_hour = day_offset * 24 + int(stamp[11:13])  # ISO "2026-11-14T18:00"
+        if window.start_hour <= abs_hour < window.end_hour and temp is not None:
             picked_temps.append(temp)
             picked_codes.append(code)
     if not picked_temps:
         raise ValueError(f"no hourly forecast in window for {iso} {window.label}")
     avg = round(sum(picked_temps) / len(picked_temps), 1)
     dominant = Counter(picked_codes).most_common(1)[0][0]
+    end_disp = window.end_hour % 24
     return {
         "temperature_c": avg,
         "condition": _WMO_CONDITIONS.get(dominant, "unknown"),
         "forecast_note": (
             f"forecast for {iso} {window.label} "
-            f"({window.start_hour:02d}:00-{window.end_hour:02d}:00, avg {avg:g}C)"
+            f"({window.start_hour:02d}:00-{end_disp:02d}:00, avg {avg:g}C)"
         ),
     }
 
