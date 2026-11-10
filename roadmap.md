@@ -129,13 +129,16 @@ Deferred to Stage 4: time-aware weather (future-dated forecasts and time-of-day 
 
 ## Stage 4: Research Agent
 
-- [ ] Research agent role defined separately from Stylist.
-- [ ] Research used only for unfamiliar dress codes, venues, events, or ambiguous context.
-- [ ] Search results summarized into styling-relevant constraints.
-- [ ] Supervisor decides when research is needed.
-- [ ] Sourced context feeds into Stylist and final ranking.
+- [x] Research agent role defined separately from Stylist (closetgraph/research.py): fetches Wikipedia (keyless, stdlib) and distills the result into a ResearchContext with one LLM call, with provenance and graceful failure.
+- [x] Research used only for unfamiliar dress codes, venues, events, or ambiguous context; a stated/named non-inferable code, not mere unfamiliarity, is the trigger.
+- [x] Search results summarized into styling-relevant constraints (inferred formality, a short constraint summary, source title and URL).
+- [x] Supervisor decides when research is needed (closetgraph/supervisor.py): hybrid routing with a deterministic conservative skip and an LLM classifier for ambiguity, first conditional branch in the graph.
+- [x] Sourced context feeds into Stylist and final ranking; research informs the ranking and the explanation but never overrides owned-wardrobe or the occasion.
+- [x] Evaluation: supervisor routing benchmark (29 labeled cases, set independently) evaluated in isolation with decision accuracy and reason quality reported separately; stylist-with-research scenarios (with vs without a verified constraint, plus irrelevant-research and research-failure cases). Routing accuracy improved 72% -> 90% by inspecting failures and fixing the classifier, not the labels.
 
-**Done when:** the system can explain why it interpreted an ambiguous occasion a certain way, using external context when appropriate.
+**Done when:** the system can explain why it interpreted an ambiguous occasion a certain way, using external context when appropriate. (Mechanism in place; final live demonstration pending.)
+
+Deferred (next, as its own increment): time-aware weather (future-dated forecasts and time-of-day windows) and natural-language date/location extraction.
 
 ## Stage 5: Vision Input
 
