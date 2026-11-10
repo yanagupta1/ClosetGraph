@@ -26,6 +26,9 @@ class WeatherInput(BaseModel):
     temperature_c: float | None = None
     condition: str | None = None  # free text, e.g. "rainy", "windy", "hot and humid"
     location: str | None = None  # used only to look weather up when not given directly
+    when: str | None = None  # optional date/time hint ("next Friday", "tomorrow evening"),
+    # parsed by closetgraph.daytime into a forecast date (and hourly window when a
+    # time/period/meal is named). Omitted or unrecognized means current conditions.
 
 
 class WeatherContext(BaseModel):
@@ -37,6 +40,8 @@ class WeatherContext(BaseModel):
     temperature_c: float | None = None
     condition: str | None = None
     sources: dict[str, str]
+    forecast_note: str | None = None  # when time-aware, what the forecast is for,
+    # e.g. "forecast for 2026-11-14 evening (high 9C / low 2C)"; None for current conditions
 
 
 class ResearchContext(BaseModel):

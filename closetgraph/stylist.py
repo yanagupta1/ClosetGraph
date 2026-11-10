@@ -125,7 +125,11 @@ def _format_weather(weather_context) -> str:
         parts.append(f"{weather_context.temperature_c:g} degrees celsius")
     if weather_context.condition:
         parts.append(weather_context.condition)
-    return ", ".join(parts) or "none provided"
+    line = ", ".join(parts) or "none provided"
+    note = getattr(weather_context, "forecast_note", None)
+    if note:
+        line = f"{line} ({note})"
+    return line
 
 
 def _format_research(research_context) -> str:
